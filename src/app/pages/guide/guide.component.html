@@ -1,0 +1,43 @@
+<div class="guide-box ccenter">
+  <div class="left-box">
+    <div class="stitle">
+      <div class="brand-name">青芯驭码</div>
+      <div class="version">ver {{version}}</div>
+    </div>
+    <div class="title">{{'GUIDE.START' | translate}}</div>
+    @if (showMenu) {
+    <div class="menu-box">
+      @for (item of guideMenu; track $index) {
+      @if (item.sep) {
+      <div class="sep"></div>
+      } @else {
+      <div class="btn link" (click)="onMenuClick(item)">
+        <div class="icon ccenter">
+          <i class="{{ item.icon }}"></i>
+        </div>
+        <div class="text">{{ item.name | translate}}</div>
+      </div>
+      }
+      }
+    </div>
+    }
+    <div style="min-height: 150px;">
+      @if(recentlyProjects.length > 0) {
+      <div class="title">{{'GUIDE.RECENTLY' | translate}}</div>
+      <div class="menu-box">
+        @for(project of recentlyProjects; track $index) {
+        <div class="project btn link" (click)="openProjectByPath(project)">
+          <div class="project-info">
+            <div class="name">{{project.nickname || project.name}}</div>
+            <div class="delete-btn" (click)="removeProject($event, project)">
+              <i class="fa-regular fa-xmark"></i>
+            </div>
+          </div>
+          <div class="path ellipsis">{{project.path}}</div>
+        </div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+</div>
