@@ -1,14 +1,17 @@
 .sub-window-box {
-  border-radius: 5px;
+  border-radius: 20px;
   overflow: hidden;
+  box-shadow: 0 22px 60px rgba(104, 132, 175, 0.16);
 }
 
 .header {
   display: flex;
   align-items: center;
-  height: 35px;
-  border-bottom: 1px solid var(--aily-border-primary);
-  background: var(--aily-bg-primary);
+  height: 40px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.74);
+  background: rgba(255, 255, 255, 0.68);
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
 
   &.darwin {
     padding-left: 80px;
@@ -31,10 +34,13 @@
 
 .title {
   height: 100%;
-  padding-left: 10px;
+  padding-left: 14px;
   display: flex;
   align-items: center;
   flex-grow: 1;
+  color: #213146;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   -webkit-app-region: drag;
 }
 
@@ -42,27 +48,25 @@
   display: flex;
   align-items: center;
   font-size: 15px;
+  padding-right: 4px;
 
   .btn {
     font-size: 16px;
     width: 33px;
     height: 33px;
     margin-right: 0;
+    border-radius: 10px;
 
     &:hover {
-      background: var(--aily-bg-tertiary);
+      background: rgba(255, 255, 255, 0.78);
     }
   }
 
-  .minimize {
-    font-size: 18px;
-  }
-
-  .go-main{
-    // border-right: 1px solid #333;
+  .go-main {
     margin-right: 10px;
     font-size: 17px;
     background: transparent !important;
+
     &:hover {
       color: var(--aily-color-link-hover);
     }
@@ -77,7 +81,9 @@
   }
 }
 
-.content{
-  height: calc(100vh - 38px);
-  background: var(--aily-bg-secondary);
+.content {
+  height: calc(100vh - 40px);
+  background: rgba(255, 255, 255, 0.28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }

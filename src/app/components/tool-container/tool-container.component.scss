@@ -1,15 +1,24 @@
 .tool-container {
-  background: var(--aily-bg-primary);
+  background: rgba(255, 255, 255, 0.34);
   height: 100%;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .header {
   display: flex;
   justify-content: space-between;
-  height: 30px;
+  align-items: center;
+  height: 38px;
+  padding: 0 8px 0 10px;
+  border-bottom: 1px solid rgba(136, 163, 201, 0.2);
+  background: rgba(255, 255, 255, 0.42);
 
   .title {
-    padding-left: 10px;
+    padding-left: 2px;
+    color: #223146;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .tool-btns {
@@ -19,13 +28,13 @@
       .btn {
         width: 30px;
         height: 30px;
+        border-radius: 10px;
 
         &:hover {
-          background: var(--aily-bg-tertiary);
+          background: rgba(255, 255, 255, 0.78);
         }
       }
     }
-
 
     .fa-arrow-up-right-from-square {
       font-size: 12px;
@@ -34,7 +43,7 @@
 }
 
 .content {
-  height: calc(100% - 30px);
-  background: var(--aily-bg-secondary);
+  height: calc(100% - 38px);
+  background: rgba(255, 255, 255, 0.18);
   overflow: hidden;
 }

@@ -49,6 +49,7 @@ export class XDialogComponent implements OnChanges, AfterViewChecked, OnDestroy 
   @Input() msgIndex = -1;
   @Input() currentMode = 'agent';
   @Input() currentModelName = '';
+  @Input() userDisplayName = 'me';
   /** 该消息创建时使用的模型名称 */
   @Input() turnModelName = '';
   @Input() isWaiting = false;
@@ -78,6 +79,14 @@ export class XDialogComponent implements OnChanges, AfterViewChecked, OnDestroy 
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
       .trim();
+  }
+
+  get displayAssistantName(): string {
+    return this.turnModelName || this.currentModelName || '小青';
+  }
+
+  get displayTurnModelName(): string {
+    return this.turnModelName ? '小青' : '';
   }
 
   /** 子Agent折叠面板展开状态 */

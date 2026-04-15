@@ -19,6 +19,7 @@ import { AilyDynamicComponentDirective } from '../../directives/aily-dynamic-com
 import { MarkdownPipe, safeBase64Decode } from '../../pipes/markdown.pipe';
 import { firstValueFrom } from 'rxjs';
 import { ConfigService } from '../../../../services/config.service';
+import { AilyChatConfigService } from '../../services/aily-chat-config.service';
 
 // import { AilyCodingComponent } from '../../../../components/aily-coding/aily-coding.component';
 
@@ -54,9 +55,14 @@ export class DialogComponent implements OnInit, OnChanges, OnDestroy {
   constructor(
     private sanitizer: DomSanitizer,
     private cd: ChangeDetectorRef,
-    private configService: ConfigService
+    private configService: ConfigService,
+    private ailyChatConfigService: AilyChatConfigService
   ) {
     this.markdownPipe = new MarkdownPipe(this.sanitizer, this.configService);
+  }
+
+  get userDisplayName(): string {
+    return this.ailyChatConfigService.userDisplayName;
   }
 
   ngOnInit(): void {

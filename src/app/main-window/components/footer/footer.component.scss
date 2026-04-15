@@ -6,22 +6,25 @@ $footer-inner-height: 28px;
   justify-content: flex-start;
   align-items: center;
   height: $footer-height;
-  background: var(--aily-bg-primary);
-  border-top: 2px solid var(--aily-border-primary);
+  background: rgba(255, 255, 255, 0.62);
+  border-top: 1px solid rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
   position: relative;
 }
 
 .btn {
   width: $footer-inner-height;
   height: $footer-inner-height;
+  border-radius: 10px;
 
   &:hover {
-    background: var(--aily-bg-tertiary);
+    background: rgba(255, 255, 255, 0.74);
   }
 
   &.active {
-    background: var(--aily-bg-active);
-    color: var(--aily-text-primary);
+    background: rgba(22, 119, 255, 0.14);
+    color: #145cb1;
   }
 }
 
@@ -32,21 +35,22 @@ $footer-inner-height: 28px;
   height: 26px;
   display: flex;
   align-items: center;
+  color: #4f6178;
 
   .icon {
     width: 26px;
     height: 26px;
   }
 
-  .fa-circle-xmark{
+  .fa-circle-xmark {
     color: var(--aily-color-error-bright);
   }
 
-  .fa-triangle-exclamation{
+  .fa-triangle-exclamation {
     color: var(--aily-color-error-notice);
   }
 
-  .fa-circle-check{
-    color: rgb(0, 200, 0);
+  .fa-circle-check {
+    color: rgb(0, 172, 92);
   }
 }

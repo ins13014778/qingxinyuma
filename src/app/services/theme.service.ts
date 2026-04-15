@@ -8,7 +8,7 @@ export type ThemeMode = 'dark' | 'light';
 })
 export class ThemeService {
   /** 当前主题的响应式信号 */
-  readonly theme = signal<ThemeMode>('dark');
+  readonly theme = signal<ThemeMode>('light');
 
   /** ng-zorro 主题 link 元素 */
   private nzThemeLinkEl: HTMLLinkElement | null = null;
@@ -21,8 +21,11 @@ export class ThemeService {
    */
   init(): void {
     const saved = this.configService.data?.theme;
-    const mode: ThemeMode = saved === 'light' ? 'light' : 'dark';
+    const mode: ThemeMode = saved === 'dark' ? 'dark' : 'light';
     this.applyTheme(mode);
+    if (saved !== mode) {
+      this.persist(mode);
+    }
 
     // 监听来自 settings 子窗口的主题切换通知
     if (window['ipcRenderer']) {
@@ -115,7 +118,7 @@ export class ThemeService {
 
   private persist(mode: ThemeMode): void {
     if (this.configService.data) {
-      this.configService.data.theme = mode === 'dark' ? 'default' : 'light';
+      this.configService.data.theme = mode;
       this.configService.save();
     }
   }

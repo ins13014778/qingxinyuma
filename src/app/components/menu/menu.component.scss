@@ -3,16 +3,18 @@
 }
 
 .menu-box {
-  background: var(--aily-bg-primary);
-  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 22px;
   position: fixed;
   z-index: 999;
   flex-direction: column;
-  padding: 3px 0;
+  padding: 8px 0;
+  box-shadow: 0 24px 80px rgba(97, 127, 173, 0.18);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 
-  // 滚动条样式
   &::-webkit-scrollbar {
-    width: 4px;
+    width: 5px;
   }
 
   &::-webkit-scrollbar-track {
@@ -21,7 +23,7 @@
 
   &::-webkit-scrollbar-thumb {
     background: var(--aily-border-tertiary);
-    border-radius: 2px;
+    border-radius: 999px;
 
     &:hover {
       background: var(--aily-scrollbar-thumb-hover);
@@ -32,28 +34,30 @@
   scrollbar-color: var(--aily-border-tertiary) transparent;
 
   .menu-item {
-    padding: 0 10px;
-    height: 30px;
-    min-height: 30px; // 保持最小高度,防止被压缩
-    flex-shrink: 0; // 防止flex布局压缩item
+    padding: 0 14px;
+    height: 38px;
+    min-height: 38px;
+    flex-shrink: 0;
     justify-content: flex-start;
-    margin: 0 3px;
-    border-radius: 5px;
+    margin: 0 6px;
+    border-radius: 14px;
     cursor: pointer;
     color: var(--aily-menu-text);
     position: relative;
     overflow: hidden;
+    transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
 
     .name {
       white-space: nowrap;
       flex-shrink: 0;
       min-width: 0;
       padding: 0 1px;
+      font-weight: 500;
     }
 
     .icon {
-      width: 20px;
-      margin-right: 10px;
+      width: 22px;
+      margin-right: 12px;
       flex-shrink: 0;
     }
 
@@ -63,32 +67,36 @@
       white-space: nowrap;
       color: var(--aily-menu-text-secondary);
       flex-shrink: 0;
+      font-size: 12px;
     }
 
     &:hover {
       background: var(--aily-menu-hover);
+      transform: translateX(2px);
     }
 
-    &.active{
+    &.active {
       background: var(--aily-menu-hover);
     }
 
     &.disabled {
       background: none;
+      opacity: 0.48;
     }
 
     &.current {
       .name::before {
         content: '';
         display: inline-block;
-        width: 5px;
-        height: 5px;
+        width: 6px;
+        height: 6px;
         border-radius: 50%;
         background: var(--aily-color-accent);
         margin-right: 6px;
         vertical-align: middle;
         flex-shrink: 0;
       }
+
       .name {
         color: var(--aily-color-accent);
       }
@@ -100,18 +108,14 @@
       }
     }
 
-    &.disabled {
-      opacity: 0.6;
-    }
-
     .arrow {
       position: absolute;
-      right: 10px;
+      right: 12px;
     }
 
     .check {
       position: absolute;
-      right: 5px;
+      right: 8px;
       color: var(--aily-color-warning);
     }
 
@@ -131,14 +135,14 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 3px;
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
       color: var(--aily-text-muted);
       font-size: 12px;
 
       &:hover {
-        background: var(--aily-highlight-bg);
+        background: rgba(255, 255, 255, 0.75);
         color: var(--aily-text-primary);
       }
     }
@@ -147,44 +151,19 @@
   .sep {
     height: 1px;
     background: var(--aily-menu-separator);
-    margin: 2px 0;
+    margin: 6px 12px;
   }
 }
 
-// 独立的子菜单样式
 .submenu-box {
-  min-width: 100px;
-  box-shadow: 0 0 5px #111;
+  min-width: 120px;
   z-index: 1000;
-  
+
   &.show {
     display: flex;
   }
 
-  .name{
+  .name {
     padding-right: 20px;
   }
-
-  // 滚动条样式
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--aily-bg-primary);
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--aily-border-tertiary);
-    border-radius: 4px;
-    
-    &:hover {
-      background: var(--aily-text-disabled);
-    }
-  }
-
-  // Firefox滚动条样式
-  scrollbar-width: thin;
-  scrollbar-color: var(--aily-border-tertiary) var(--aily-bg-primary);
 }

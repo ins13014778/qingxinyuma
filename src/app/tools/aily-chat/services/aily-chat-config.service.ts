@@ -90,6 +90,8 @@ export interface AilyChatConfig {
     summarizationThresholdRatio?: number;
     /** 默认自动保存变更（AI编辑完成后自动保留，不弹出变更面板） */
     autoSaveEdits?: boolean;
+    /** 聊天界面用户显示昵称 */
+    userDisplayName?: string;
 }
 
 /**
@@ -118,7 +120,8 @@ const DEFAULT_CONFIG: AilyChatConfig = {
     contextWindowSize: 0,
     compressionThresholdRatio: 0.5,
     summarizationThresholdRatio: 0.75,
-    autoSaveEdits: true
+    autoSaveEdits: true,
+    userDisplayName: 'me'
 };
 
 /**
@@ -337,6 +340,15 @@ export class AilyChatConfigService {
 
     set autoSaveEdits(value: boolean) {
         this.config.autoSaveEdits = value;
+    }
+
+    get userDisplayName(): string {
+        const value = this.config.userDisplayName?.trim();
+        return value || 'me';
+    }
+
+    set userDisplayName(value: string) {
+        this.config.userDisplayName = value.trim() || 'me';
     }
 
     /**

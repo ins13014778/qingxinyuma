@@ -121,20 +121,9 @@ export let HEADER_MENU: IMenuItem[] = [
     icon: 'fa-light fa-album-collection',
   },
   {
-    name: 'MENU.FEEDBACK',
-    action: 'feedback',
-    icon: 'fa-light fa-messages-question',
-  },
-  {
-    name: 'MENU.GITHUB',
+    name: '官网',
     action: 'browser-open',
-    data: { type: 'other', action: 'openByBrowser', url: 'https://github.com/ailyProject/aily-blockly' },
-    icon: 'fa-brands fa-github-alt',
-  },
-  {
-    name: 'MENU.ABOUT',
-    action: 'browser-open',
-    data: { type: 'other', action: 'openByBrowser', url: 'https://aily.pro' },
+    data: { type: 'other', action: 'openByBrowser', url: 'https://zybbq.xyz/' },
     icon: 'fa-light fa-globe-pointer',
   },
   {

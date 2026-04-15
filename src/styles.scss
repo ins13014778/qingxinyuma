@@ -6,9 +6,13 @@ body {
   margin: 0;
   font-family: "MiSans Regular", "FiraCode Regular" !important;
   overflow: hidden;
-  background-color: var(--aily-bg-primary) !important;
+  background:
+    radial-gradient(circle at top left, rgba(144, 209, 255, 0.2), transparent 25%),
+    linear-gradient(180deg, #f8fbff, var(--aily-bg-primary)) !important;
   color: var(--aily-text-primary);
   user-select: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .loading-box {

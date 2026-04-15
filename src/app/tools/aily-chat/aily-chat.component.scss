@@ -12,7 +12,9 @@
   flex-shrink: 0;
   /* 不允许收缩，保持TODO面板完整显示 */
   border-top: 1px solid var(--aily-border-subtle, #3c3c3c);
-  background: var(--aily-bg-secondary, #252526);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   max-height: 300px;
   /* 限制最大高度防止占用过多空间 */
   overflow: hidden;
@@ -29,6 +31,7 @@
   min-height: 0;
   /* 确保可以收缩 */
   overflow: hidden;
+  background: transparent;
   /* 防止内容溢出 */
 }
 
@@ -42,6 +45,7 @@
   /* 确保flex子项可以收缩 */
   position: relative;
   z-index: 10;
+  background: transparent;
 
   .dialogs {
     padding: 0 10px 10px 0;
@@ -69,7 +73,10 @@
     padding: 5px;
     border-radius: 5px;
     position: relative;
-    background: var(--aily-bg-elevated);
+    background: rgba(255, 255, 255, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
 
     .textarea-wrapper {
       position: relative;
@@ -94,13 +101,13 @@
       left: 0;
       min-width: 200px;
       max-width: 300px;
-      background: var(--aily-bg-tertiary);
-      border: 1px solid var(--aily-border-tertiary);
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.84);
       border-radius: 6px;
       padding: 4px;
       margin-bottom: 4px;
       z-index: 100;
-      box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 -12px 28px rgba(97, 127, 173, 0.14);
 
       .agent-suggestion-item {
         display: flex;
@@ -119,7 +126,7 @@
         }
 
         &:hover {
-          background: rgba(99, 102, 241, 0.2);
+          background: rgba(255, 255, 255, 0.82);
         }
       }
     }
@@ -161,7 +168,7 @@
 
         &:hover {
           color: var(--aily-text-primary);
-          background: var(--aily-bg-tertiary);
+          background: rgba(255, 255, 255, 0.52);
         }
 
         &.actived {
@@ -253,7 +260,7 @@ nz-resize-handle {
   height: 28px;
   z-index: 0;
   pointer-events: none;
-  background: var(--aily-bg-tertiary);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .btn2 {
@@ -286,7 +293,7 @@ nz-resize-handle {
     border: 1px solid var(--aily-border-tertiary);
 
     &:hover {
-      background-color: var(--aily-bg-tertiary);
+      background-color: rgba(255, 255, 255, 0.42);
     }
 
     &.block-item {

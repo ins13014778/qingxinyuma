@@ -143,7 +143,7 @@ export class AilyChatComponent implements OnDestroy {
 
   get currentModel() { return this.engine.currentModel; }
 
-  get currentModelName() { return this.engine.currentModelName; }
+  get currentModelName() { return this.engine.currentModelName ? '小青' : ''; }
 
   get contextBudget$() { return this.engine.contextBudget$; }
 
@@ -154,6 +154,8 @@ export class AilyChatComponent implements OnDestroy {
   get prjPath() { return this.engine.prjPath; }
 
   get prjRootPath() { return this.engine.prjRootPath; }
+
+  get userDisplayName() { return this.ailyChatConfigService.userDisplayName; }
 
   get currentUrl() { return this._currentUrl; }
   private _currentUrl: string;
@@ -451,6 +453,7 @@ export class AilyChatComponent implements OnDestroy {
 
   onSettingsSaved() {
     this.showSettings = false;
+    this.cdr.markForCheck();
   }
 
   newChat() {

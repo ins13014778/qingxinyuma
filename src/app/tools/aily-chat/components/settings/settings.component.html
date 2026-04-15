@@ -164,6 +164,8 @@
                 <span>其他设置</span>
             </div>
             <div class="items-list">
+                <div>用户昵称</div>
+                <input nz-input [(ngModel)]="userDisplayName" placeholder="默认 me" />
                 <div class="setting-row">
                     <label nz-checkbox [(ngModel)]="autoSaveEdits">默认自动保存变更</label>
                     <span class="setting-hint">AI编辑完成后自动保留变更，不弹出变更面板</span>

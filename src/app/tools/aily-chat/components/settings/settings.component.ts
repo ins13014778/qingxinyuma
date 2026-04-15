@@ -55,6 +55,7 @@ export class AilyChatSettingsComponent implements OnInit {
 
   // 默认自动保存变更
   autoSaveEdits: boolean = false;
+  userDisplayName: string = 'me';
 
   // Agent 列表配置
   readonly agentConfigs: AgentConfig[] = [
@@ -155,6 +156,7 @@ export class AilyChatSettingsComponent implements OnInit {
     // 加载配置
     this.maxCount = this.ailyChatConfigService.maxCount;
     this.autoSaveEdits = this.ailyChatConfigService.autoSaveEdits;
+    this.userDisplayName = this.ailyChatConfigService.userDisplayName;
   }
 
   /**
@@ -452,6 +454,7 @@ export class AilyChatSettingsComponent implements OnInit {
     // 保存配置
     this.ailyChatConfigService.maxCount = this.maxCount;
     this.ailyChatConfigService.autoSaveEdits = this.autoSaveEdits;
+    this.ailyChatConfigService.userDisplayName = this.userDisplayName;
 
     // 保存每个Agent的工具配置
     for (const agentConfig of this.agentConfigs) {

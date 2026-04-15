@@ -1,6 +1,7 @@
 .window-box {
     height: 100%;
     position: relative;
+    background: transparent;
 }
 
 .breadcrumb {
@@ -8,6 +9,9 @@
     position: relative;
     display: flex;
     align-items: center;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 
     .home {
         cursor: pointer;
@@ -29,6 +33,7 @@
     height: calc(100% - 85px);
     display: flex;
     flex-direction: column;
+    background: transparent;
 }
 
 .section-title {
@@ -38,6 +43,9 @@
     color: var(--aily-text-primary);
     border-bottom: 1px solid var(--aily-border-input);
     position: relative;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 
     .search-btn {
         width: 30px;
@@ -57,8 +65,8 @@
         align-items: center;
 
         .tags {
-            background: var(--aily-bg-tertiary);
-            border: 1px solid var(--aily-bg-tertiary);
+            background: rgba(255, 255, 255, 0.48);
+            border: 1px solid rgba(255, 255, 255, 0.72);
             height: 32px;
             display: flex;
             align-items: center;
@@ -70,7 +78,7 @@
                 cursor: pointer;
 
                 &:hover {
-                    background: var(--aily-border-tertiary);
+                    background: rgba(255, 255, 255, 0.72);
                 }
 
                 &:last-child {
@@ -84,15 +92,15 @@
             display: flex;
             align-items: center;
             padding-left: 5px;
-            background: var(--aily-bg-tertiary);
-            border: 1px solid var(--aily-bg-tertiary);
+            background: rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.68);
             border-radius: 3px;
             overflow: hidden;
 
 
             input {
-                background: var(--aily-bg-tertiary);
-                border: 1px solid var(--aily-bg-tertiary);
+                background: transparent;
+                border: 1px solid transparent;
                 height: 28px;
                 border: none;
                 outline: none;
@@ -128,7 +136,10 @@
 .item {
     display: flex;
     padding: 5px;
-    background: var(--aily-bg-tertiary);
+    background: rgba(255, 255, 255, 0.38);
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-radius: 5px;
     overflow: hidden;
     position: relative;
@@ -138,7 +149,7 @@
     transition: all 0.3s;
 
     &:hover {
-        background: var(--aily-border-input);
+        background: rgba(255, 255, 255, 0.58);
 
         .btns {
             display: flex;
@@ -278,7 +289,9 @@
     padding: 5px 0;
     align-items: center;
     justify-content: center;
-    background: var(--aily-bg-elevated);
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: absolute;
     bottom: 0;
 }
