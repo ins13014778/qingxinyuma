@@ -16,6 +16,7 @@ import { injectTodoReminder } from '../tools';
 import { getMemoryPromptSnippet } from '../tools/memoryTool';
 import {
   getPreferredHttpErrorMessage as _getPreferredHttpErrorMessage,
+  isAuthenticationExpiredError as _isAuthenticationExpiredError,
   isTransientNetworkError as _isTransientNetworkError,
   isLikelySessionLostError as _isLikelySessionLostError,
 } from '../services/http-error-handler.service';
@@ -38,6 +39,19 @@ import {
 
 export class StreamProcessorHelper {
   constructor(private engine: ChatEngineService) {}
+
+  private _handleExpiredAuthToolError(error: any, fallbackMessage: string): boolean {
+    if (!_isAuthenticationExpiredError(error)) {
+      return false;
+    }
+
+    const errMsg = error?.message || fallbackMessage;
+    this.engine.ngZone.run(() => {
+      this.engine.message.error(errMsg);
+    });
+    this.engine.stop();
+    return true;
+  }
 
   /** 流连接网络错误自动重试计数 */
   private streamNetworkRetryCount = 0;
@@ -308,6 +322,9 @@ export class StreamProcessorHelper {
                     this.engine.viewAdapter.markLastMessageDone();
                     this.engine.currentMessageSource = 'mainAgent';
                   }
+                  if (this._handleExpiredAuthToolError(error, errMsg)) {
+                    return;
+                  }
                   this.engine.pendingToolResults.push({ tool_id: data.tool_id, tool_name: data.tool_name, content: errMsg, is_error: true });
                   this.engine.turnLoop.onToolExecutionComplete();
                 }
@@ -467,6 +484,9 @@ export class StreamProcessorHelper {
                       if (this.engine.currentMessageSource !== 'mainAgent') {
                         this.engine.viewAdapter.markLastMessageDone();
                         this.engine.currentMessageSource = 'mainAgent';
+                      }
+                      if (this._handleExpiredAuthToolError(error, errMsg)) {
+                        return;
                       }
                       this.engine.pendingToolResults.push({ tool_id: data.tool_id, tool_name: data.tool_name, content: errMsg, is_error: true });
                       this.engine.turnLoop.onToolExecutionComplete();

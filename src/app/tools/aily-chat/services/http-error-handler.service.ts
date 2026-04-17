@@ -6,6 +6,8 @@
  * - 根据 HTTP 状态码生成友好文案
  */
 
+export const AUTH_EXPIRED_MESSAGE = 'Token已过期，请重新登录';
+
 /**
  * 获取首选的 HTTP 错误消息
  */
@@ -15,6 +17,38 @@ export function getPreferredHttpErrorMessage(err: any): string {
     return detailMessage;
   }
   return getHttpErrorFallbackMessage(err);
+}
+
+/**
+ * 判断错误是否表示当前登录态已失效，需要重新登录。
+ */
+export function isAuthenticationExpiredError(err: any): boolean {
+  const status = extractHttpStatusCode(err);
+  if (status === 401) {
+    return true;
+  }
+
+  const text = [
+    extractErrorDetailMessage(err),
+    err?.message,
+    err?.detail,
+    err?.error?.message,
+    typeof err === 'string' ? err : ''
+  ]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    .join(' ')
+    .toLowerCase();
+
+  return [
+    /token.*过期/,
+    /token.*expired/,
+    /登录.*失效/,
+    /登录.*过期/,
+    /重新登录/,
+    /unauthorized/,
+    /session.*expired/,
+    /auth.*expired/,
+  ].some(pattern => pattern.test(text));
 }
 
 function isGenericTransportErrorText(text: string): boolean {

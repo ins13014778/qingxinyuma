@@ -15,6 +15,8 @@ import { NzSwitchModule } from 'ng-zorro-antd/switch';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzModalService } from 'ng-zorro-antd/modal';
 import { ThemeService, ThemeMode } from '../../services/theme.service';
+import { AgentCliBackend, AgentCliInstallSource, AgentCliProvider, AgentCliService, AgentCliStatus } from '../../services/agent-cli.service';
+import { NzMessageService } from 'ng-zorro-antd/message';
 
 @Component({
   selector: 'app-settings',
@@ -68,6 +70,10 @@ export class SettingsComponent {
     {
       name: 'SETTINGS.SECTIONS.DEPENDENCIES',
       icon: 'fa-light fa-layer-group'
+    },
+    {
+      name: 'SETTINGS.SECTIONS.AGENT_CLI',
+      icon: 'fa-light fa-terminal'
     },
     // {
     //   name: 'SETTINGS.SECTIONS.MCP',
@@ -169,6 +175,17 @@ export class SettingsComponent {
   appdata_path: string
 
   mcpServiceList = []
+  agentCliStatuses: Record<AgentCliProvider, AgentCliStatus> = {
+    'codex-cli': this.buildEmptyStatus('codex-cli'),
+    'claude-code': this.buildEmptyStatus('claude-code'),
+  };
+  agentCliBusy: Partial<Record<AgentCliProvider, 'detecting' | 'installing' | 'upgrading'>> = {};
+  readonly agentCliProviders: AgentCliProvider[] = ['codex-cli', 'claude-code'];
+  readonly installSourceOptions: { label: string; value: AgentCliInstallSource }[] = [
+    { label: '默认国内', value: 'domestic' },
+    { label: '官方', value: 'official' },
+    { label: '自定义', value: 'custom' },
+  ];
 
   constructor(
     private uiService: UiService,
@@ -177,12 +194,16 @@ export class SettingsComponent {
     private configService: ConfigService,
     private modal: NzModalService,
     private translateService: TranslateService,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    private agentCliService: AgentCliService,
+    private message: NzMessageService,
   ) {
   }
 
   async ngOnInit() {
     await this.configService.init();
+    this.agentCliService.ensureConfig();
+    await this.refreshAgentCliStatuses();
   }
 
   async ngAfterViewInit() {
@@ -199,6 +220,98 @@ export class SettingsComponent {
     this.settingsService.getToolList(this.appdata_path, npmRegistry);
     this.settingsService.getSdkList(this.appdata_path, npmRegistry);
     this.settingsService.getCompilerList(this.appdata_path, npmRegistry);
+  }
+
+  get agentCliConfig() {
+    this.agentCliService.ensureConfig();
+    return this.configData.agentCli;
+  }
+
+  get currentAgentBackend(): AgentCliBackend {
+    return this.agentCliConfig.backend || 'custom-model';
+  }
+
+  async onAgentCliSourceChange(value: AgentCliInstallSource) {
+    this.agentCliConfig.installSource = value;
+    this.configService.save();
+  }
+
+  async onAgentCliCustomRegistryChange(value: string) {
+    this.agentCliConfig.customRegistry = value;
+    this.configService.save();
+  }
+
+  async onAgentCliBackendChange(value: AgentCliBackend) {
+    this.agentCliConfig.backend = value;
+    this.configService.save();
+  }
+
+  async refreshAgentCliStatuses() {
+    const statuses = await this.agentCliService.detectAll();
+    this.agentCliStatuses = statuses;
+  }
+
+  getAgentCliLabel(provider: AgentCliProvider): string {
+    return this.agentCliService.getProviderLabel(provider);
+  }
+
+  getAgentCliResolvedRegistry(): string {
+    return this.agentCliService.getResolvedRegistry();
+  }
+
+  async detectAgentCli(provider: AgentCliProvider) {
+    this.agentCliBusy[provider] = 'detecting';
+    try {
+      this.agentCliStatuses[provider] = await this.agentCliService.detectProvider(provider);
+    } finally {
+      delete this.agentCliBusy[provider];
+    }
+  }
+
+  async installAgentCli(provider: AgentCliProvider) {
+    if (this.agentCliStatuses[provider]?.installed) {
+      this.message.info(`${this.getAgentCliLabel(provider)} 已安装，无需重复安装`);
+      return;
+    }
+    this.agentCliBusy[provider] = 'installing';
+    try {
+      this.agentCliStatuses[provider] = await this.agentCliService.installProvider(provider);
+      this.message.success(`${this.getAgentCliLabel(provider)} 安装成功`);
+    } catch (error: any) {
+      this.message.error(error?.message || `${this.getAgentCliLabel(provider)} 安装失败`);
+    } finally {
+      delete this.agentCliBusy[provider];
+    }
+  }
+
+  async upgradeAgentCli(provider: AgentCliProvider) {
+    this.agentCliBusy[provider] = 'upgrading';
+    try {
+      this.agentCliStatuses[provider] = await this.agentCliService.upgradeProvider(provider);
+      this.message.success(`${this.getAgentCliLabel(provider)} 升级成功`);
+    } catch (error: any) {
+      this.message.error(error?.message || `${this.getAgentCliLabel(provider)} 升级失败`);
+    } finally {
+      delete this.agentCliBusy[provider];
+    }
+  }
+
+  private buildEmptyStatus(provider: AgentCliProvider): AgentCliStatus {
+    const label = provider === 'codex-cli' ? 'Codex CLI' : 'Claude Code';
+    const commandName = provider === 'codex-cli' ? 'codex' : 'claude';
+    const packageName = provider === 'codex-cli' ? '@openai/codex' : '@anthropic-ai/claude-code';
+    return {
+      provider,
+      installed: false,
+      version: '',
+      commandPath: '',
+      packageName,
+      commandName,
+      installCommand: '',
+      upgradeCommand: '',
+      error: '',
+      lastCheckedAt: '',
+    };
   }
 
   selectLang(lang) {

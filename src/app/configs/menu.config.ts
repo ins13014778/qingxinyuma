@@ -1,3 +1,5 @@
+import { AI_CHAT_ENABLED } from './feature-flags';
+
 export interface IMenuItem {
   name?: string;
   text?: string;
@@ -15,6 +17,7 @@ export interface IMenuItem {
   children?: IMenuItem[],
   extra?: any,
   check?: boolean,
+  current?: boolean,
   key?: string; // 用于标识编译和上传配置
   /** 行内操作按钮，如重命名/删除 */
   actions?: { icon: string; action: string; title?: string }[];
@@ -162,13 +165,13 @@ export let GUIDE_MENU: IMenuItem[] = [
     data: { type: 'other', action: 'openByBrowser', url: 'https://aily.pro' },
     icon: 'fa-light fa-album-collection',
   },
-  {
+  ...(AI_CHAT_ENABLED ? [{
     name: 'MENU.AI_ASSISTANT',
     action: 'tool-open',
     data: { type: 'tool', data: 'aily-chat' },
     icon: 'fa-light fa-star-christmas',
     more: 'AI',
-  }
+  }] : [])
 ];
 
 

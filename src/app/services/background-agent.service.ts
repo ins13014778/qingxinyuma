@@ -12,11 +12,10 @@
  */
 
 import { Injectable, OnDestroy } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subject, Observable, Subscription } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { API } from '../configs/api.config';
-import { AuthService } from './auth.service';
 import { ProjectService } from './project.service';
 import { ConnectionGraphService } from './connection-graph.service';
 import { ElectronService } from './electron.service';
@@ -140,7 +139,6 @@ export class BackgroundAgentService implements OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService,
     private projectService: ProjectService,
     private connectionGraphService: ConnectionGraphService,
     private electronService: ElectronService,
@@ -244,7 +242,11 @@ export class BackgroundAgentService implements OnDestroy {
     // 关闭服务端会话
     if (this.sessionId) {
       try {
-        await this.http.post(`${API.closeSession}/${this.sessionId}`, {}).toPromise();
+        await this.http.post(`${API.closeSession}/${this.sessionId}`, {}, {
+          headers: new HttpHeaders({
+            'X-Skip-Auth': 'true'
+          })
+        }).toPromise();
       } catch { }
     }
 
@@ -292,7 +294,11 @@ export class BackgroundAgentService implements OnDestroy {
       mode: 'agent',
     };
 
-    const result: any = await this.http.post(API.startSession, payload).toPromise();
+    const result: any = await this.http.post(API.startSession, payload, {
+      headers: new HttpHeaders({
+        'X-Skip-Auth': 'true'
+      })
+    }).toPromise();
     if (result?.status !== 'success') {
       throw new Error(result?.message || '创建会话失败');
     }
@@ -391,13 +397,10 @@ export class BackgroundAgentService implements OnDestroy {
    * 流结束后返回，由 runToolCallingLoop 判断是否继续循环。
    */
   private async processChatTurn(): Promise<void> {
-    const token = await this.authService.getToken2();
     const headers: HeadersInit = {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Skip-Auth': 'true'
     };
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
 
     const payload = {
       session_id: this.sessionId,

@@ -76,6 +76,8 @@ import { ContextBudgetService } from './services/context-budget.service';
 import { SubagentSessionService } from './services/subagent-session.service';
 import { ChatHistoryService } from './services/chat-history.service';
 import { ThemeService } from '../../services/theme.service';
+import { AgentCliBackend, AgentCliService } from '../../services/agent-cli.service';
+import { AI_CHAT_ENABLED } from '../../configs/feature-flags';
 
 // 共享类型从 core/chat-types.ts 导入并重新导出（保持向后兼容）
 import { Tool, ResourceItem, ChatMessage, ToolCallState, ToolCallInfo } from './core/chat-types';
@@ -157,6 +159,19 @@ export class AilyChatComponent implements OnDestroy {
 
   get userDisplayName() { return this.ailyChatConfigService.userDisplayName; }
 
+  get currentAgentBackend(): AgentCliBackend {
+    this.agentCliService.ensureConfig();
+    return this.configService.data.agentCli?.backend || 'custom-model';
+  }
+
+  get currentAgentBackendName(): string {
+    return this.agentCliService.getProviderLabel(this.currentAgentBackend);
+  }
+
+  get isServerAiEnabled(): boolean {
+    return AI_CHAT_ENABLED;
+  }
+
   get currentUrl() { return this._currentUrl; }
   private _currentUrl: string;
 
@@ -199,6 +214,7 @@ export class AilyChatComponent implements OnDestroy {
     public resourceManager: ResourceManagerService,
     public menuManager: MenuManagerService,
     private themeService: ThemeService,
+    private agentCliService: AgentCliService,
   ) {
     // 注册 OnPush CD 回调 — viewAdapter 每次 flush/appendImmediate 后调用 markForCheck
     this.engine.setCdCallback(() => this.cdr.markForCheck());
@@ -447,6 +463,14 @@ export class AilyChatComponent implements OnDestroy {
     this.menuManager.showModelMenu = false;
   }
 
+  backendMenuClick(item: IMenuItem) {
+    const backend = item.data?.backend as AgentCliBackend | undefined;
+    if (!backend) return;
+    this.agentCliService.setSelectedBackend(backend);
+    this.menuManager.showBackendMenu = false;
+    this.cdr.markForCheck();
+  }
+
   openSettings(event) {
     this.showSettings = !this.showSettings;
   }
@@ -538,6 +562,29 @@ export class AilyChatComponent implements OnDestroy {
       action: 'select-model',
       data: { model }
     }));
+  }
+
+  get BackendList(): IMenuItem[] {
+    return [
+      {
+        name: '自定义模型',
+        action: 'select-backend',
+        current: this.currentAgentBackend === 'custom-model',
+        data: { backend: 'custom-model' }
+      },
+      {
+        name: 'Codex CLI',
+        action: 'select-backend',
+        current: this.currentAgentBackend === 'codex-cli',
+        data: { backend: 'codex-cli' }
+      },
+      {
+        name: 'Claude Code',
+        action: 'select-backend',
+        current: this.currentAgentBackend === 'claude-code',
+        data: { backend: 'claude-code' }
+      }
+    ];
   }
 
   splitContent(content: any) { return _splitContent(content); }

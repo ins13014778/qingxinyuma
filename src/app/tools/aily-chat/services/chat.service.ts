@@ -5,9 +5,10 @@ import { MCPTool } from './mcp.service';
 import { ChatAPI } from '../core/api-endpoints';
 import { AilyChatConfigService, ModelConfigOption } from './aily-chat-config.service';
 import { AilyHost } from '../core/host';
-import { isTransientNetworkError, isLikelySessionLostError } from './http-error-handler.service';
+import { isAuthenticationExpiredError, isLikelySessionLostError, isTransientNetworkError } from './http-error-handler.service';
 import { asyncJsonStringify } from '../core/async-json-stringify';
 import { ChatKernelProxy } from './chat-kernel-proxy';
+import { AuthService } from '../../../services/auth.service';
 
 // 使用 ModelConfigOption 作为统一的模型配置类型，保留 ModelConfig 别名以兼容旧代码
 export type ModelConfig = ModelConfigOption;
@@ -122,11 +123,31 @@ export class ChatService {
     };
   }
 
+  private async normalizeAppAuthError(error: any): Promise<any> {
+    const normalized = await this.authService.normalizeAuthError(error);
+    return normalized;
+  }
+
+  private emitAsyncError(observer: { error: (error: any) => void }, error: any, usesAppAuth: boolean): void {
+    const errorPromise = usesAppAuth
+      ? this.normalizeAppAuthError(error)
+      : Promise.resolve(error);
+
+    errorPromise
+      .then((normalizedError) => observer.error(normalizedError))
+      .catch((normalizedError) => observer.error(normalizedError));
+  }
+
   private isCustomModelMode(): boolean {
     return Boolean(
       (this.currentModel && this.currentModel.baseUrl && this.currentModel.apiKey)
       || this.ailyChatConfigService.useCustomApiKey
     );
+  }
+
+  private shouldBypassServerAuth(): boolean {
+    // 当前桌面版已不再提供登录入口，AI/子代理链路统一按匿名模式访问。
+    return true;
   }
 
   private createHttpOptions(skipAuth: boolean = false): { headers?: HttpHeaders } {
@@ -154,6 +175,10 @@ export class ChatService {
       baseUrl,
       model
     };
+  }
+
+  getActiveDirectModelConfig(selectModel?: string): { apiKey: string; baseUrl: string; model: string } | null {
+    return this.getDirectModelConfig(undefined, selectModel);
   }
 
   private getDirectChatCompletionsUrl(baseUrl: string): string {
@@ -376,6 +401,7 @@ export class ChatService {
   constructor(
     private http: HttpClient,
     private ailyChatConfigService: AilyChatConfigService,
+    private authService: AuthService,
   ) {
     // 从配置加载AI聊天模式
     this.loadChatMode();
@@ -520,7 +546,7 @@ export class ChatService {
       payload.select_model = selectModel;
     }
 
-    return this.http.post(ChatAPI.startSession, payload, this.createHttpOptions(Boolean(customllmConfig)));
+    return this.http.post(ChatAPI.startSession, payload, this.createHttpOptions(true));
   }
 
   /**
@@ -534,20 +560,31 @@ export class ChatService {
     model_name?: string;
   } | null> {
     try {
-      const token = this.isCustomModelMode() ? '' : await AilyHost.get().auth.getToken!();
+      const usesAppAuth = !this.shouldBypassServerAuth() && !this.isCustomModelMode();
+      const token = usesAppAuth ? await AilyHost.get().auth.getToken!() : '';
       const headers: HeadersInit = { 'Content-Type': 'application/json' };
       if (token) headers['Authorization'] = `Bearer ${token}`;
       const resp = await fetch(`${ChatAPI.contextInfo}/${sessionId}`, { headers });
-      if (!resp.ok) return null;
+      if (!resp.ok) {
+        const errorBody = await this.readHttpErrorBody(resp);
+        const error = this.createNormalizedHttpError(resp, errorBody);
+        if (usesAppAuth && isAuthenticationExpiredError(error)) {
+          await this.normalizeAppAuthError(error);
+        }
+        return null;
+      }
       return await resp.json();
     } catch (e) {
+      if (!this.isCustomModelMode() && isAuthenticationExpiredError(e)) {
+        await this.normalizeAppAuthError(e);
+      }
       console.warn('[ChatService] fetchContextInfo failed:', e);
       return null;
     }
   }
 
   closeSession(sessionId: string) {
-    return this.http.post(`${ChatAPI.closeSession}/${sessionId}`, {}, this.createHttpOptions(this.isCustomModelMode()));
+    return this.http.post(`${ChatAPI.closeSession}/${sessionId}`, {}, this.createHttpOptions(true));
   }
 
   // 本地调试用：模拟服务端流式返回的字符串数据
@@ -774,13 +811,14 @@ export class ChatService {
       let workerSub: Subscription | null = null;
       let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
       const abortCtrl = new AbortController();
+      const usesAppAuth = !this.shouldBypassServerAuth() && !this.isCustomModelMode();
 
       // 获取 token 并添加 Authorization 头部
       AilyHost.get().auth.getToken!().then(token => {
         if (aborted) return;
 
         const headers: Record<string, string> = {};
-        if (!this.isCustomModelMode() && token) {
+        if (usesAppAuth && token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
 
@@ -791,7 +829,11 @@ export class ChatService {
           workerSub = this.sseProxy.sseFetch(url, 'GET', headers).subscribe({
             next: data => { if (!aborted) observer.next(data); },
             complete: () => { if (!aborted) observer.complete(); },
-            error: err => { if (!aborted) observer.error(err); },
+            error: err => {
+              if (!aborted) {
+                this.emitAsyncError(observer, err, usesAppAuth);
+              }
+            },
           });
           return;
         }
@@ -803,7 +845,7 @@ export class ChatService {
 
           if (!response.ok) {
             const errorBody = await this.readHttpErrorBody(response);
-            observer.error(this.createNormalizedHttpError(response, errorBody));
+            this.emitAsyncError(observer, this.createNormalizedHttpError(response, errorBody), usesAppAuth);
             return;
           }
 
@@ -853,18 +895,18 @@ export class ChatService {
             }
           } catch (error) {
             if ((error as Error)?.name === 'AbortError' || aborted) return;
-            observer.error(error);
+            this.emitAsyncError(observer, error, usesAppAuth);
           }
         })
         .catch(error => {
           if ((error as Error)?.name === 'AbortError') return;
           if (!aborted) {
-            observer.error(error);
+            this.emitAsyncError(observer, error, usesAppAuth);
           }
         });
       }).catch(error => {
         if (!aborted) {
-          observer.error(error);
+          this.emitAsyncError(observer, error, usesAppAuth);
         }
       });
 
@@ -884,7 +926,7 @@ export class ChatService {
     return this.http.post(
       `${ChatAPI.sendMessage}/${sessionId}`,
       { content, source },
-      this.createHttpOptions(this.isCustomModelMode())
+      this.createHttpOptions(true)
     );
   }
 
@@ -920,6 +962,7 @@ export class ChatService {
       let workerSub: Subscription | null = null;
       let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
       const abortCtrl = new AbortController();
+      const usesAppAuth = !this.shouldBypassServerAuth() && !this.isCustomModelMode();
 
       const payload: any = {
         session_id: sessionId,
@@ -955,7 +998,7 @@ export class ChatService {
         const headers: Record<string, string> = {
           'Content-Type': 'application/json'
         };
-        if (!this.isCustomModelMode() && token) {
+        if (usesAppAuth && token) {
           headers['Authorization'] = `Bearer ${token}`;
         }
         if (debugForceErrorCode) {
@@ -970,7 +1013,11 @@ export class ChatService {
           workerSub = this.sseProxy.sseFetch(url, 'POST', headers, payload).subscribe({
             next: data => { if (!aborted) observer.next(data); },
             complete: () => { if (!aborted) observer.complete(); },
-            error: err => { if (!aborted) observer.error(err); },
+            error: err => {
+              if (!aborted) {
+                this.emitAsyncError(observer, err, usesAppAuth);
+              }
+            },
           });
           return;
         }
@@ -1022,16 +1069,22 @@ export class ChatService {
                   if (aborted) return;
                   if (!retryResp.ok) {
                     const retryErrorBody = await this.readHttpErrorBody(retryResp);
-                    observer.error(this.createNormalizedHttpError(
-                      retryResp,
-                      retryErrorBody,
-                      `HTTP error after session restart! Status: ${retryResp.status}`
-                    ));
+                    this.emitAsyncError(
+                      observer,
+                      this.createNormalizedHttpError(
+                        retryResp,
+                        retryErrorBody,
+                        `HTTP error after session restart! Status: ${retryResp.status}`
+                      ),
+                      usesAppAuth
+                    );
                     return;
                   }
                   streamResponse = retryResp;
                 } catch (retryErr) {
-                  if (!aborted) observer.error(retryErr);
+                  if (!aborted) {
+                    this.emitAsyncError(observer, retryErr, usesAppAuth);
+                  }
                   return;
                 }
               } else if (isTransientNetworkError(normalizedErr) && attempt < MAX_NETWORK_RETRIES) {
@@ -1044,7 +1097,7 @@ export class ChatService {
                 }
                 return;
               } else {
-                observer.error(normalizedErr);
+                this.emitAsyncError(observer, normalizedErr, usesAppAuth);
                 return;
               }
             }
@@ -1110,7 +1163,7 @@ export class ChatService {
               return;
             }
             if (!aborted) {
-              observer.error(error);
+              this.emitAsyncError(observer, error, usesAppAuth);
             }
           }
         };
@@ -1118,7 +1171,7 @@ export class ChatService {
         attemptFetch(0);
       }).catch(error => {
         if (!aborted) {
-          observer.error(error);
+          this.emitAsyncError(observer, error, usesAppAuth);
         }
       });
 
@@ -1135,15 +1188,15 @@ export class ChatService {
   }
 
   getHistory(sessionId: string) {
-    return this.http.get(`${ChatAPI.getHistory}/${sessionId}`, this.createHttpOptions(this.isCustomModelMode()));
+    return this.http.get(`${ChatAPI.getHistory}/${sessionId}`, this.createHttpOptions(true));
   }
 
   stopSession(sessionId: string) {
-    return this.http.post(`${ChatAPI.stopSession}/${sessionId}`, {}, this.createHttpOptions(this.isCustomModelMode()));
+    return this.http.post(`${ChatAPI.stopSession}/${sessionId}`, {}, this.createHttpOptions(true));
   }
 
   cancelTask(sessionId: string) {
-    return this.http.post(`${ChatAPI.cancelTask}/${sessionId}`, {}, this.createHttpOptions(this.isCustomModelMode()));
+    return this.http.post(`${ChatAPI.cancelTask}/${sessionId}`, {}, this.createHttpOptions(true));
   }
 
   /**

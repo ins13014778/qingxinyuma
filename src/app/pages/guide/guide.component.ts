@@ -10,6 +10,7 @@ import { ElectronService } from '../../services/electron.service';
 import { CommonModule } from '@angular/common';
 import { OnboardingService } from '../../services/onboarding.service';
 import { GUIDE_ONBOARDING_CONFIG } from '../../configs/onboarding.config';
+import { AI_CHAT_ENABLED } from '../../configs/feature-flags';
 
 @Component({
   selector: 'app-guide',
@@ -19,7 +20,7 @@ import { GUIDE_ONBOARDING_CONFIG } from '../../configs/onboarding.config';
 })
 export class GuideComponent implements OnInit {
   version = version;
-  guideMenu = GUIDE_MENU;
+  guideMenu = GUIDE_MENU.filter(item => AI_CHAT_ENABLED || item.data?.data !== 'aily-chat');
   showMenu = true;
   showMore = false;
 

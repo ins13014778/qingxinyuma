@@ -189,13 +189,19 @@ export class XDialogComponent implements OnChanges, AfterViewChecked, OnDestroy 
   onFeedback(feedback: 'helpful' | 'unhelpful'): void {
     if (this.feedbackState === feedback || !this.sessionId) return;
     this.feedbackState = feedback;
-    AilyHost.get().auth.getToken!().then(token => {
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+    Promise.resolve().then(() => {
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+        'X-Skip-Auth': 'true'
+      };
       fetch(`${ChatAPI.conversationFeedback}/${this.sessionId}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({ feedback }),
+      }).then(async (response) => {
+        if (response.ok) {
+          return;
+        }
       }).catch(() => {});
     }).catch(() => {});
   }

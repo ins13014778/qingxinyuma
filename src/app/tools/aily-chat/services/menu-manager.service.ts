@@ -32,9 +32,11 @@ export class MenuManagerService {
   showHistoryList = false;
   showMode = false;
   showModelMenu = false;
+  showBackendMenu = false;
   historyListPosition: MenuPosition = { x: 0, y: 0 };
   modeListPosition: MenuPosition = { x: 0, y: 0 };
   modelListPosition: MenuPosition = { x: 0, y: 0 };
+  backendListPosition: MenuPosition = { x: 0, y: 0 };
   historyList: any[] = [];
 
   constructor(
@@ -49,6 +51,7 @@ export class MenuManagerService {
     this.showHistoryList = false;
     this.showMode = false;
     this.showModelMenu = false;
+    this.showBackendMenu = false;
   }
 
   /** 打开/关闭历史记录面板 */
@@ -99,6 +102,26 @@ export class MenuManagerService {
     event.stopPropagation();
     this.showMode = false;
     this.showModelMenu = !this.showModelMenu;
+  }
+
+  toggleBackendMenu(event: MouseEvent, itemCount: number): void {
+    const target = event.currentTarget as HTMLElement;
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      const menuHeight = itemCount * 30 + 12;
+      let x = rect.left;
+      let y = rect.top - menuHeight - 1;
+      if (x < 0) x = rect.left;
+      if (y < 0) y = rect.bottom - 1;
+      this.backendListPosition = { x: Math.max(0, x), y: Math.max(0, y) };
+    } else {
+      this.backendListPosition = { x: window.innerWidth - 302, y: window.innerHeight - 280 };
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.showMode = false;
+    this.showModelMenu = false;
+    this.showBackendMenu = !this.showBackendMenu;
   }
 
   /**

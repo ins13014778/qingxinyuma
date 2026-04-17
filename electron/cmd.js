@@ -11,7 +11,7 @@ class CommandManager {
 
   // 执行命令并返回流式数据
   executeCommand(options) {
-    let { command, args = [], cwd, env, streamId } = options;
+    let { command, args = [], cwd, env, streamId, closeStdin = false } = options;
     
     // 根据平台选择正确的 shell
     let shell;
@@ -66,12 +66,32 @@ class CommandManager {
     console.log(`[CMD] 工作目录: ${cwd || process.cwd()}`);
     console.log(`[CMD] Shell: ${shell}`);
     
+    const mergedEnv = { ...process.env, ...env };
+    if (isWin32) {
+      const pathKey = Object.keys(mergedEnv).find((key) => key.toLowerCase() === 'path') || 'Path';
+      const existingPath = mergedEnv[pathKey] || mergedEnv.PATH || '';
+      const extraPaths = [];
+      if (mergedEnv.APPDATA) {
+        extraPaths.push(path.join(mergedEnv.APPDATA, 'npm'));
+      }
+      if (mergedEnv.USERPROFILE) {
+        extraPaths.push(path.join(mergedEnv.USERPROFILE, 'AppData', 'Roaming', 'npm'));
+      }
+      const uniquePaths = [...new Set([...extraPaths, ...String(existingPath).split(path.delimiter).filter(Boolean)])];
+      mergedEnv[pathKey] = uniquePaths.join(path.delimiter);
+      mergedEnv.PATH = mergedEnv[pathKey];
+    }
+
     const child = spawn(command, args, {
       cwd: cwd || process.cwd(),
-      env: { ...process.env, ...env },
+      env: mergedEnv,
       shell: shell,
       stdio: ['pipe', 'pipe', 'pipe']
     });
+
+    if (closeStdin && child.stdin) {
+      child.stdin.end();
+    }
 
     this.processes.set(streamId, child);
 

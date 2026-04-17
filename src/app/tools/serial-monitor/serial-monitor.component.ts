@@ -191,6 +191,8 @@ export class SerialMonitorComponent {
       this.currentPort = this.serialService.currentPort;
     }
 
+    await this.getDevicePortList();
+
     // 初始化数据数量
     if (this.dataList.length > 0) {
       this.dataCount.set(this.dataList.length);
@@ -396,6 +398,12 @@ export class SerialMonitorComponent {
     this.saveSerialConfig();
   }
 
+  async selectPortByName(portName: string) {
+    const target = this.portList.find(item => item.name === portName);
+    if (!target || target.disabled) return;
+    this.selectPort(target);
+  }
+
   // 波特率选择列表相关 
   showBaudList = false;
   baudList = BAUDRATE_LIST;
@@ -414,10 +422,48 @@ export class SerialMonitorComponent {
     this.cd.detectChanges();
   }
 
-  selectBaud(item) {
+  async selectBaud(item) {
+    const previousBaudRate = this.currentBaudRate;
     this.currentBaudRate = item.name;
     this.closeBaudList();
     this.saveSerialConfig();
+
+    if (this.switchValue && this.currentPort) {
+      try {
+        await this.serialMonitorService.disconnect();
+        const result = await this.serialMonitorService.connect({
+          path: this.currentPort,
+          baudRate: parseInt(this.currentBaudRate),
+          dataBits: parseInt(this.dataBits),
+          stopBits: parseFloat(this.stopBits),
+          parity: this.parity,
+          flowControl: this.flowControl
+        });
+
+        if (result) {
+          this.message.success(`波特率已切换为 ${this.currentBaudRate}`);
+          setTimeout(() => {
+            this.serialMonitorService.sendSignal('DTR');
+          }, 50);
+        } else {
+          this.currentBaudRate = previousBaudRate;
+          this.saveSerialConfig();
+          this.message.error('波特率切换失败，已恢复原设置');
+        }
+      } catch {
+        this.currentBaudRate = previousBaudRate;
+        this.saveSerialConfig();
+        this.message.error('波特率切换失败，已恢复原设置');
+      } finally {
+        this.cd.detectChanges();
+      }
+    }
+  }
+
+  async selectBaudByName(baudName: string) {
+    const target = this.baudList.find(item => item.name === baudName);
+    if (!target) return;
+    await this.selectBaud(target);
   }
 
   async switchPort() {

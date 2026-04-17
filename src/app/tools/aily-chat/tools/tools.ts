@@ -1,6 +1,7 @@
 import { json } from "stream/consumers";
 
 import { buildRunSubagentDescription } from './runSubagentTool';
+import { SUBAGENT_ENABLED } from '../../../configs/feature-flags';
 
 export const toolParamNames = [
     "command"
@@ -316,7 +317,7 @@ export const TOOLS = [
     // =============================================================================
     // 子代理工具 - 始终发送给 LLM（core）
     // =============================================================================
-    {
+    ...(SUBAGENT_ENABLED ? [{
         name: 'run_subagent',
         get description() { return buildRunSubagentDescription(); },
         input_schema: {
@@ -338,7 +339,7 @@ export const TOOLS = [
             required: ['agent', 'task']
         },
         agents: ["mainAgent"]
-    },
+    }] : []),
     // =============================================================================
     // 核心工具 - 始终发送给 LLM
     // =============================================================================

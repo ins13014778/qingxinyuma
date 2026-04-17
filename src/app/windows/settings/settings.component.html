@@ -150,6 +150,93 @@
               </div>
             </div>
           </div>
+          <div id="SETTINGS.SECTIONS.AGENT_CLI" class="section">
+            <h2 class="section-title">Agent CLI 管理</h2>
+            <div class="right-inner">
+              <div class="item">
+                <div>默认聊天后端:</div>
+                <div class="agent-cli-backends">
+                  <button nz-button nzSize="small"
+                    [nzType]="currentAgentBackend === 'custom-model' ? 'primary' : 'default'"
+                    (click)="onAgentCliBackendChange('custom-model')">
+                    自定义模型
+                  </button>
+                  <button nz-button nzSize="small"
+                    [nzType]="currentAgentBackend === 'codex-cli' ? 'primary' : 'default'"
+                    (click)="onAgentCliBackendChange('codex-cli')">
+                    Codex CLI
+                  </button>
+                  <button nz-button nzSize="small"
+                    [nzType]="currentAgentBackend === 'claude-code' ? 'primary' : 'default'"
+                    (click)="onAgentCliBackendChange('claude-code')">
+                    Claude Code
+                  </button>
+                </div>
+              </div>
+
+              <div class="item">
+                <div>安装源:</div>
+                <div class="agent-cli-sources">
+                  @for(option of installSourceOptions; track option.value) {
+                  <button nz-button nzSize="small"
+                    [nzType]="agentCliConfig.installSource === option.value ? 'primary' : 'default'"
+                    (click)="onAgentCliSourceChange(option.value)">
+                    {{ option.label }}
+                  </button>
+                  }
+                </div>
+              </div>
+
+              @if(agentCliConfig.installSource === 'custom') {
+              <div class="item">
+                <div>自定义 registry:</div>
+                <input nz-input [(ngModel)]="agentCliConfig.customRegistry" placeholder="https://registry.example.com"
+                  (ngModelChange)="onAgentCliCustomRegistryChange($event)" />
+              </div>
+              }
+
+              <div class="item">
+                <div>当前安装源地址:</div>
+                <input nz-input [ngModel]="getAgentCliResolvedRegistry()" [disabled]="true" />
+              </div>
+
+              <div class="agent-cli-list">
+                @for(provider of agentCliProviders; track provider) {
+                <div class="agent-cli-card bborder">
+                  <div class="agent-cli-card-head">
+                    <div class="agent-cli-title">{{ getAgentCliLabel(provider) }}</div>
+                    <div class="agent-cli-status" [class.ok]="agentCliStatuses[provider]?.installed">
+                      {{ agentCliStatuses[provider]?.installed ? '已安装' : '未安装' }}
+                    </div>
+                  </div>
+                  <div class="agent-cli-meta">命令: {{ agentCliStatuses[provider]?.commandName }}</div>
+                  <div class="agent-cli-meta">包名: {{ agentCliStatuses[provider]?.packageName }}</div>
+                  <div class="agent-cli-meta">版本: {{ agentCliStatuses[provider]?.version || '-' }}</div>
+                  <div class="agent-cli-meta">路径: {{ agentCliStatuses[provider]?.commandPath || '-' }}</div>
+                  @if(agentCliStatuses[provider]?.providerSummary) {
+                  <div class="agent-cli-meta">配置: {{ agentCliStatuses[provider]?.providerSummary }}</div>
+                  }
+                  <div class="agent-cli-meta">错误: {{ agentCliStatuses[provider]?.error || '-' }}</div>
+                  <div class="agent-cli-actions">
+                    <button nz-button nzSize="small" (click)="detectAgentCli(provider)" [disabled]="!!agentCliBusy[provider]">
+                      {{ agentCliBusy[provider] === 'detecting' ? '检测中...' : '重新检测' }}
+                    </button>
+                    <button nz-button nzSize="small" nzType="primary"
+                      (click)="installAgentCli(provider)"
+                      [disabled]="!!agentCliBusy[provider] || agentCliStatuses[provider]?.installed">
+                      {{ agentCliBusy[provider] === 'installing' ? '安装中...' : '一键安装' }}
+                    </button>
+                    <button nz-button nzSize="small"
+                      (click)="upgradeAgentCli(provider)"
+                      [disabled]="!!agentCliBusy[provider] || !agentCliStatuses[provider]?.installed">
+                      {{ agentCliBusy[provider] === 'upgrading' ? '升级中...' : '升级' }}
+                    </button>
+                  </div>
+                </div>
+                }
+              </div>
+            </div>
+          </div>
           <!-- <div id="SETTINGS.SECTIONS.MCP" class="section">
             <h2 class="section-title">MCP</h2>
             <div class="right-inner">

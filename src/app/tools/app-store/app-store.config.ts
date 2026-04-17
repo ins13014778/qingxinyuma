@@ -1,4 +1,5 @@
 import { IMenuItem } from '../../configs/menu.config';
+import { AI_CHAT_ENABLED } from '../../configs/feature-flags';
 
 export interface AppItem extends IMenuItem {
   id: string;
@@ -45,7 +46,7 @@ export const APP_LIST: AppItem[] = [
     data: { type: 'tool', data: 'aily-chat' },
     icon: 'fa-light fa-star-christmas',
     more: 'AI',
-    enabled: true
+    enabled: AI_CHAT_ENABLED
   },
   {
     id: 'model-store',

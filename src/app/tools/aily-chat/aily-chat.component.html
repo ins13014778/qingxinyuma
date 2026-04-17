@@ -167,7 +167,10 @@
               }
             </div>
             <!-- 模型选择 -->
-            @if(ModelList.length > 0) {
+            <div class="btn mode ccenter" (click)="menuManager.toggleBackendMenu($event, BackendList.length)">
+              <i class="fa-light fa-terminal"></i><span>{{ currentAgentBackendName }}</span><i class="fa-light fa-angle-down"></i>
+            </div>
+            @if(currentAgentBackend === 'custom-model' && ModelList.length > 0) {
             <div class="btn mode ccenter" (click)="menuManager.toggleModelMenu($event, ModelList.length)">
               <i class="fa-light fa-star-christmas"></i><span>{{ currentModelName }}</span>
             </div>
@@ -253,3 +256,7 @@
   (itemClickEvent)="modelMenuClick($event)"></app-menu>
 }
 
+@if(menuManager.showBackendMenu){
+<app-menu class="backend-menu" [menuList]="BackendList" [position]="menuManager.backendListPosition" (closeEvent)="menuManager.closeAll()"
+  (itemClickEvent)="backendMenuClick($event)"></app-menu>
+}

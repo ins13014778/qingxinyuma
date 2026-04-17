@@ -43,7 +43,7 @@ import { APP_LIST } from '../../../configs/tool.config';
 export class HeaderComponent implements OnDestroy {
   headerBtns = HEADER_BTNS;
   headerMenu = HEADER_MENU;
-  headerApps = APP_LIST;
+  headerApps = APP_LIST.filter(app => app.enabled !== false);
 
   get isMac() {
     return this.platformService.isMac();

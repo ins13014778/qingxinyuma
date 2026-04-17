@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, Subject, throwError, from } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import { API } from '../configs/api.config';
 import { ElectronService } from './electron.service';
+import { AUTH_EXPIRED_MESSAGE, isAuthenticationExpiredError } from '../tools/aily-chat/services/http-error-handler.service';
 
 export interface CommonResponse {
   status: number;
@@ -75,6 +76,7 @@ export class AuthService {
   // 用户信息
   private userInfoSubject = new BehaviorSubject<any>(null);
   public userInfo$ = this.userInfoSubject.asObservable();
+  private authExpiredPromise: Promise<Error> | null = null;
 
   // 登录弹窗显示状态
   showUser = new BehaviorSubject<any>(null);
@@ -84,6 +86,31 @@ export class AuthService {
     this.isLoggedInSubject.subscribe(() => {
       setTimeout(() => this.appRef.tick());
     });
+  }
+  async handleAuthExpired(message: string = AUTH_EXPIRED_MESSAGE): Promise<Error> {
+    if (!this.authExpiredPromise) {
+      this.authExpiredPromise = (async () => {
+        try {
+          await this.logout();
+        } catch (error) {
+          console.warn('处理登录失效时登出失败:', error);
+        }
+
+        return new Error(message);
+      })().finally(() => {
+        this.authExpiredPromise = null;
+      });
+    }
+
+    return this.authExpiredPromise;
+  }
+
+  async normalizeAuthError<T>(error: T, message: string = AUTH_EXPIRED_MESSAGE): Promise<T | Error> {
+    if (!isAuthenticationExpiredError(error)) {
+      return error;
+    }
+
+    return this.handleAuthExpired(message);
   }
 
   /**
@@ -212,7 +239,10 @@ export class AuthService {
       if (token) {
         // 调用服务器登出接口
         this.http.get<CommonResponse>(API.logout, {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'X-Skip-Auth': 'true'
+          }
         }).subscribe({
           error: (error) => console.warn('服务器登出')
         });

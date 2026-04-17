@@ -92,6 +92,12 @@ export class ConfigService {
 
     // 合并用户配置和默认配置
     this.data = { ...this.data, ...userConfData };
+    if (!this.data.agentCli) {
+      this.data.agentCli = {};
+    }
+    this.data.agentCli.backend = this.data.agentCli.backend || 'custom-model';
+    this.data.agentCli.installSource = this.data.agentCli.installSource || 'domestic';
+    this.data.agentCli.customRegistry = this.data.agentCli.customRegistry || '';
     this.configReloaded$.next();
 
     // 使用Electron检测到的最优区域覆盖配置
@@ -1038,6 +1044,13 @@ interface AppConfig {
 
   /** AI聊天模式 */
   aiChatMode?: 'agent' | 'ask';
+
+  /** 本机 Agent CLI 配置 */
+  agentCli?: {
+    backend?: 'custom-model' | 'codex-cli' | 'claude-code';
+    installSource?: 'domestic' | 'official' | 'custom';
+    customRegistry?: string;
+  };
 
   /** 串口监视器配置 */
   serialMonitor?: {

@@ -29,6 +29,8 @@ import { ScrollManagerService } from './scroll-manager.service';
 import { ResourceManagerService } from './resource-manager.service';
 import { MenuManagerService } from './menu-manager.service';
 import { TodoUpdateService } from './todoUpdate.service';
+import { AgentCliBackend, AgentCliProvider, AgentCliService } from '../../../services/agent-cli.service';
+import { ConfigService } from '../../../services/config.service';
 
 import { ChatMessage, Tool, ToolCallState, ResourceItem } from '../core/chat-types';
 import { AilyHost } from '../core/host';
@@ -209,6 +211,8 @@ export class ChatEngineService {
     public resourceManager: ResourceManagerService,
     public menuManager: MenuManagerService,
     public todoUpdateService: TodoUpdateService,
+    private configService: ConfigService,
+    private agentCliService: AgentCliService,
   ) {
     // 初始化 viewAdapter（需要 ngZone 已注入）
     (this as any).viewAdapter = new ChatViewAdapter(
@@ -586,13 +590,7 @@ Do not create non-existent boards and libraries.
     this.chatService.currentSessionTitle = initialTitle;
     this.chatHistoryService.updateTitle(this.sessionId, initialTitle);
     this.session.refreshHistoryList();
-    if (content.length <= 20) return;
-    const titleContent = content.length > 500 ? content.substring(0, 500) : content;
-    this.chatService.generateTitle(this.sessionId, titleContent, (title: string) => {
-      this.chatService.currentSessionTitle = title;
-      this.chatHistoryService.updateTitle(this.sessionId, title);
-      this.session.refreshHistoryList();
-    });
+    return;
   }
 
   showAiWritingNotice(isWaiting: boolean): void {
@@ -728,6 +726,16 @@ Do not create non-existent boards and libraries.
 
       this.msg.appendMessage('user', displayText);
 
+      const backend = this.getSelectedBackend();
+      if (backend !== 'custom-model') {
+        this.isWaiting = true;
+        this.msg.appendMessage('aily', '[thinking...]');
+        this.currentMessageSource = 'mainAgent';
+        if (clear) { this.inputValue = ''; }
+        this.sendToLocalCli(backend, llmText);
+        return;
+      }
+
       if (this.useStatelessMode) {
         this.turnManager.startTurn(llmText);
         this.isWaiting = true;
@@ -764,6 +772,36 @@ Do not create non-existent boards and libraries.
     this.isWaiting = true;
     this.currentMessageSource = 'mainAgent';
     this.sendMessageWithRetry(this.sessionId, llmText, sender, clear, 3);
+  }
+
+  private getSelectedBackend(): AgentCliBackend {
+    this.agentCliService.ensureConfig();
+    return this.configService.data.agentCli?.backend || 'custom-model';
+  }
+
+  private async sendToLocalCli(backend: AgentCliProvider, prompt: string): Promise<void> {
+    const status = await this.agentCliService.detectProvider(backend);
+    if (!status.installed) {
+      this.list[this.list.length - 1].content = `\n\`\`\`aily-error\n${JSON.stringify({ message: `${this.agentCliService.getProviderLabel(backend)} 尚未安装，请先到设置页的 Agent CLI 管理中安装。` })}\n\`\`\`\n\n`;
+      this.viewAdapter.markLastMessageDone();
+      this.isWaiting = false;
+      return;
+    }
+
+    try {
+      const cwd = this.getCurrentProjectPath() || AilyHost.get().project.currentProjectPath || AilyHost.get().project.projectRootPath || undefined;
+      const output = await this.agentCliService.executePrompt(backend, prompt, cwd);
+      this.list[this.list.length - 1].content = output;
+    } catch (error: any) {
+      const message = error?.message || `${this.agentCliService.getProviderLabel(backend)} 执行失败`;
+      this.list[this.list.length - 1].content = `\n\`\`\`aily-error\n${JSON.stringify({ message })}\n\`\`\`\n\n`;
+    } finally {
+      this.viewAdapter.markLastMessageDone();
+      this.currentMessageSource = 'mainAgent';
+      this.isWaiting = false;
+      this.isCompleted = true;
+      this.session.saveCurrentSession();
+    }
   }
 
   private sendMessageWithRetry(sessionId: string, text: string, sender: string, clear: boolean, retryCount: number): void {

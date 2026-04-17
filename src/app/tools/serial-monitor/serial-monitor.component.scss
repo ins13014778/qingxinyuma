@@ -110,6 +110,35 @@
         }
       }
     }
+
+    .port-select-box,
+    .baud-select-box {
+      padding-left: 0;
+      padding-right: 0;
+
+      nz-select {
+        width: 100%;
+
+        ::ng-deep {
+          .ant-select-selector {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            height: 24px !important;
+            padding: 0 8px !important;
+          }
+
+          .ant-select-selection-item {
+            line-height: 24px !important;
+            color: var(--aily-text-primary);
+          }
+
+          .ant-select-arrow {
+            color: var(--aily-text-primary);
+          }
+        }
+      }
+    }
   }
 
   .switch {

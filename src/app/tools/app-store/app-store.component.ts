@@ -188,7 +188,7 @@ export class AppStoreComponent implements OnInit, AfterViewInit {
 
   loadApps() {
     // 直接使用配置文件中的默认应用列表
-    const allApps = [...APP_LIST];
+    const allApps = APP_LIST.filter(app => app.enabled !== false);
     console.log('所有应用数据:', allApps);
     
     // 从存储中加载用户配置的 header 和 sidebar 应用

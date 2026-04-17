@@ -178,6 +178,7 @@
             "COMPILATION": "编译设置",
             "REPOSITORY": "服务区域",
             "DEPENDENCIES": "全局依赖",
+            "AGENT_CLI": "Agent CLI管理",
             "MCP": "MCP",
             "DEVMODE": "开发者模式"
         },

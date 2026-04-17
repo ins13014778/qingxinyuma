@@ -77,7 +77,8 @@ export class CompileValidationService {
         this.authService.refreshMe();
       }
     } catch (error) {
-      console.warn('首次编译验证后台上报失败:', error);
+      const normalizedError = await this.authService.normalizeAuthError(error);
+      console.warn('首次编译验证后台上报失败:', normalizedError);
     } finally {
       this.inFlightUserIds.delete(userId);
     }

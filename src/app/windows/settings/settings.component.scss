@@ -224,6 +224,60 @@ ngx-simplebar {
   }
 }
 
+.agent-cli-backends,
+.agent-cli-sources,
+.agent-cli-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.agent-cli-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.agent-cli-card {
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--aily-bg-input);
+}
+
+.agent-cli-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.agent-cli-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--aily-text-primary);
+}
+
+.agent-cli-status {
+  font-size: 12px;
+  color: var(--aily-color-error-bright);
+
+  &.ok {
+    color: var(--aily-color-success);
+  }
+}
+
+.agent-cli-meta {
+  font-size: 12px;
+  color: var(--aily-text-secondary);
+  line-height: 1.8;
+  word-break: break-all;
+}
+
+.agent-cli-actions {
+  margin-top: 10px;
+}
+
 [disabled] {
   opacity: 0.6;
 }

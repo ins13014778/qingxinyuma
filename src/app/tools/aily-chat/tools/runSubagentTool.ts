@@ -14,6 +14,7 @@
  */
 
 import { ToolUseResult } from './tools';
+import { SUBAGENT_ENABLED } from '../../../configs/feature-flags';
 
 // ============================
 // 类型定义
@@ -51,6 +52,9 @@ const _agentRegistry = new Map<string, SubagentDefinition>();
  * 注册一个子代理定义
  */
 export function registerSubagent(def: SubagentDefinition): void {
+  if (!SUBAGENT_ENABLED) {
+    return;
+  }
   _agentRegistry.set(def.name, def);
 }
 
@@ -58,6 +62,9 @@ export function registerSubagent(def: SubagentDefinition): void {
  * 获取所有已注册子代理
  */
 export function getRegisteredSubagents(): SubagentDefinition[] {
+  if (!SUBAGENT_ENABLED) {
+    return [];
+  }
   return [..._agentRegistry.values()];
 }
 

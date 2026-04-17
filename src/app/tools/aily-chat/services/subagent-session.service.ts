@@ -17,7 +17,7 @@
  */
 
 import { Injectable, OnDestroy } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Subject, Observable, Subscription } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { ChatAPI } from '../core/api-endpoints';
@@ -411,6 +411,26 @@ export class SubagentSessionService implements OnDestroy {
 
     // 创建新的服务端会话（新建 or 从持久化恢复后首次使用）
     const sessionId = uuidv4();
+    const directConfig = this.chatService.getActiveDirectModelConfig();
+
+    if (directConfig) {
+      if (existing && existing.needsServerSession) {
+        existing.sessionId = sessionId;
+        existing.needsServerSession = false;
+        return existing;
+      }
+
+      const localSession: SubagentSession = {
+        sessionId,
+        agentName,
+        messages: [],
+        running: false,
+        createdAt: Date.now(),
+      };
+
+      this.sessions.set(agentName, localSession);
+      return localSession;
+    }
 
     const agentTools = this.getToolsForAgent(agentName);
 
@@ -422,7 +442,11 @@ export class SubagentSessionService implements OnDestroy {
     };
 
     try {
-      const result: any = await this.http.post(ChatAPI.startSession, payload).toPromise();
+      const result: any = await this.http.post(ChatAPI.startSession, payload, {
+        headers: new HttpHeaders({
+          'X-Skip-Auth': 'true'
+        })
+      }).toPromise();
       if (result?.status !== 'success') {
         throw new Error(result?.message || `创建 ${agentName} 会话失败`);
       }
@@ -453,7 +477,14 @@ export class SubagentSessionService implements OnDestroy {
    * 关闭服务端会话
    */
   private closeServerSession(sessionId: string): void {
-    this.http.post(`${ChatAPI.closeSession}/${sessionId}`, {}).toPromise().catch(() => {});
+    if (this.chatService.getActiveDirectModelConfig()) {
+      return;
+    }
+    this.http.post(`${ChatAPI.closeSession}/${sessionId}`, {}, {
+      headers: new HttpHeaders({
+        'X-Skip-Auth': 'true'
+      })
+    }).toPromise().catch(() => {});
   }
 
   // =========================================================================
@@ -601,6 +632,7 @@ export class SubagentSessionService implements OnDestroy {
       };
 
       const agentTools = this.getToolsForAgent(session.agentName);
+      const directConfig = this.chatService.getActiveDirectModelConfig();
 
       // 复用 ChatService.chatRequest()，与 mainAgent 完全一致的流处理
       const source$ = this.chatService.chatRequest(
@@ -608,7 +640,9 @@ export class SubagentSessionService implements OnDestroy {
         session.messages,
         agentTools,
         'agent',
-        undefined, undefined, undefined,
+        directConfig ? { apiKey: directConfig.apiKey, baseUrl: directConfig.baseUrl } : undefined,
+        directConfig?.model,
+        undefined,
         session.agentName,
       );
 
