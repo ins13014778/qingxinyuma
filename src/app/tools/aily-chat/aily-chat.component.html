@@ -75,7 +75,11 @@
         <i class="fa-light fa-star-christmas"></i>
         <div class="title">{{ 'AILY_CHAT.SERVICE_TITLE' | translate }}</div>
         <div class="text">{{ 'AILY_CHAT.DISCLAIMER' | translate }}</div>
-        <div class="btn link" (click)="openUrl()">{{ 'AILY_CHAT.USAGE_GUIDE' | translate }}</div>
+        <div class="feature-row">
+          <span class="feature-chip">OpenAI Agent</span>
+          <span class="feature-chip">Multi-Agent</span>
+          <span class="feature-chip">Hardware Coding</span>
+        </div>
       </div>
       }
     </div>
@@ -159,18 +163,19 @@
             </div> -->
             }
             <!-- 模式选择 -->
-            <div class="btn mode ccenter" (click)="menuManager.toggleModeMenu($event)">
+            <div class="btn mode icon-only ccenter" (click)="menuManager.toggleModeMenu($event)"
+              nz-tooltip nzTooltipPlacement="top" [nzTooltipTitle]="currentModeTooltip">
               @if(currentMode === 'agent') {
-              <i class="fa-light fa-user-astronaut"></i><span>{{ 'AILY_CHAT.MODE_AGENT' | translate }}</span>
+              <i class="fa-light fa-user-astronaut"></i>
               } @else {
-              <i class="fa-light fa-comment-smile"></i><span>{{ 'AILY_CHAT.MODE_QA' | translate }}</span>
+              <i class="fa-light fa-comment-smile"></i>
               }
             </div>
             <!-- 模型选择 -->
             <div class="btn mode ccenter" (click)="menuManager.toggleBackendMenu($event, BackendList.length)">
               <i class="fa-light fa-terminal"></i><span>{{ currentAgentBackendName }}</span><i class="fa-light fa-angle-down"></i>
             </div>
-            @if(currentAgentBackend === 'custom-model' && ModelList.length > 0) {
+            @if((currentAgentBackend === 'custom-model' || currentAgentBackend === 'openai-agents-python') && ModelList.length > 0) {
             <div class="btn mode ccenter" (click)="menuManager.toggleModelMenu($event, ModelList.length)">
               <i class="fa-light fa-star-christmas"></i><span>{{ currentModelName }}</span>
             </div>

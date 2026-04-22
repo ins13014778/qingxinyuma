@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { CmdOutput, CmdService } from './cmd.service';
 import { ConfigService } from './config.service';
 
-export type AgentCliProvider = 'codex-cli' | 'claude-code';
+export type AgentCliProvider = 'codex-cli' | 'claude-code' | 'openai-agents-python';
 export type AgentCliBackend = 'custom-model' | AgentCliProvider;
 export type AgentCliInstallSource = 'domestic' | 'official' | 'custom';
 
@@ -20,12 +20,35 @@ export interface AgentCliStatus {
   lastCheckedAt: string;
 }
 
+export interface AgentCliExecutionOptions {
+  modelConfig?: {
+    apiKey: string;
+    baseUrl: string;
+    model: string;
+  } | null;
+}
+
 interface AgentCliDefinition {
   provider: AgentCliProvider;
   label: string;
   packageName: string;
   commandName: string;
-  installArgs: string[];
+  installKind: 'npm' | 'python';
+  installArgs?: string[];
+}
+
+interface PythonCommandResolution {
+  executable: string;
+  argsPrefix: string[];
+  displayName: string;
+  resolvedPath: string;
+}
+
+export interface AgentCliPythonRuntime {
+  command: string;
+  argsPrefix: string[];
+  displayName: string;
+  resolvedPath: string;
 }
 
 interface CommandRunResult {
@@ -34,8 +57,10 @@ interface CommandRunResult {
   stderr: string;
 }
 
-const DOMESTIC_REGISTRY = 'https://registry.npmmirror.com';
-const OFFICIAL_REGISTRY = 'https://registry.npmjs.org';
+const DOMESTIC_NPM_REGISTRY = 'https://registry.npmmirror.com';
+const OFFICIAL_NPM_REGISTRY = 'https://registry.npmjs.org';
+const DOMESTIC_PYPI_INDEX = 'https://pypi.tuna.tsinghua.edu.cn/simple';
+const OFFICIAL_PYPI_INDEX = 'https://pypi.org/simple';
 
 @Injectable({
   providedIn: 'root'
@@ -47,6 +72,7 @@ export class AgentCliService {
       label: 'Codex CLI',
       packageName: '@openai/codex',
       commandName: 'codex',
+      installKind: 'npm',
       installArgs: ['install', '-g', '@openai/codex']
     },
     {
@@ -54,7 +80,15 @@ export class AgentCliService {
       label: 'Claude Code',
       packageName: '@anthropic-ai/claude-code',
       commandName: 'claude',
+      installKind: 'npm',
       installArgs: ['install', '-g', '@anthropic-ai/claude-code']
+    },
+    {
+      provider: 'openai-agents-python',
+      label: 'OpenAI Agents Python',
+      packageName: 'openai-agents',
+      commandName: 'python',
+      installKind: 'python',
     }
   ];
 
@@ -114,38 +148,76 @@ export class AgentCliService {
     this.configService.save();
   }
 
-  getResolvedRegistry(): string {
-    const source = this.getInstallSource();
-    if (source === 'official') return OFFICIAL_REGISTRY;
-    if (source === 'custom') {
-      const customRegistry = this.getCustomRegistry().trim();
-      return customRegistry || DOMESTIC_REGISTRY;
+  getResolvedRegistry(provider: AgentCliProvider = 'codex-cli'): string {
+    const definition = this.getDefinition(provider);
+    if (definition.installKind === 'python') {
+      return this.getResolvedPythonIndex();
     }
-    return DOMESTIC_REGISTRY;
+    return this.getResolvedNpmRegistry();
   }
 
   buildInstallCommand(provider: AgentCliProvider): string {
     const definition = this.getDefinition(provider);
-    return this.stringifyCommand('npm', [...definition.installArgs, '--registry', this.getResolvedRegistry()]);
+    if (definition.installKind === 'python') {
+      return this.stringifyCommand(
+        'python',
+        ['-m', 'pip', 'install', definition.packageName, '--index-url', this.getResolvedRegistry(provider)]
+      );
+    }
+    return this.stringifyCommand('npm', [...(definition.installArgs || []), '--registry', this.getResolvedRegistry(provider)]);
   }
 
   buildUpgradeCommand(provider: AgentCliProvider): string {
     const definition = this.getDefinition(provider);
-    return this.stringifyCommand('npm', ['install', '-g', `${definition.packageName}@latest`, '--registry', this.getResolvedRegistry()]);
+    if (definition.installKind === 'python') {
+      return this.stringifyCommand(
+        'python',
+        ['-m', 'pip', 'install', '--upgrade', definition.packageName, '--index-url', this.getResolvedRegistry(provider)]
+      );
+    }
+    return this.stringifyCommand('npm', ['install', '-g', `${definition.packageName}@latest`, '--registry', this.getResolvedRegistry(provider)]);
   }
 
   async detectProvider(provider: AgentCliProvider): Promise<AgentCliStatus> {
     const definition = this.getDefinition(provider);
-    const resolvedCommandPath = await this.resolveCommandPath(definition.commandName);
-    const providerSummary = provider === 'codex-cli' ? this.readCodexProviderSummary() : '';
-    const versionResult = resolvedCommandPath
-      ? await this.runCommand(resolvedCommandPath, ['--version'])
-      : { code: 1, stdout: '', stderr: '未找到可执行命令路径' };
-    const installed = !!resolvedCommandPath && versionResult.code === 0 && !!versionResult.stdout.trim();
-    const version = installed
-      ? versionResult.stdout.split(/\r?\n/).map(line => line.trim()).find(Boolean) || ''
-      : '';
-    const commandPath = resolvedCommandPath || '';
+    let installed = false;
+    let version = '';
+    let commandPath = '';
+    let error = '';
+
+    if (definition.installKind === 'python') {
+      const python = await this.resolvePythonCommand();
+      commandPath = python?.resolvedPath || '';
+
+      if (!python) {
+        error = '未检测到可用的 Python 解释器';
+      } else {
+        const versionResult = await this.runCommand(
+          python.executable,
+          [
+            ...python.argsPrefix,
+            '-c',
+            'from importlib.metadata import version; print(version("openai-agents"))'
+          ]
+        );
+        installed = versionResult.code === 0 && !!versionResult.stdout.trim();
+        version = installed
+          ? versionResult.stdout.split(/\r?\n/).map(line => line.trim()).find(Boolean) || ''
+          : '';
+        error = installed ? '' : (versionResult.stderr || versionResult.stdout || '未检测到 openai-agents');
+      }
+    } else {
+      const resolvedCommandPath = await this.resolveCommandPath(definition.commandName);
+      commandPath = resolvedCommandPath || '';
+      const versionResult = resolvedCommandPath
+        ? await this.runCommand(resolvedCommandPath, ['--version'])
+        : { code: 1, stdout: '', stderr: '未找到可执行命令路径' };
+      installed = !!resolvedCommandPath && versionResult.code === 0 && !!versionResult.stdout.trim();
+      version = installed
+        ? versionResult.stdout.split(/\r?\n/).map(line => line.trim()).find(Boolean) || ''
+        : '';
+      error = installed ? '' : (versionResult.stderr || '未检测到命令');
+    }
 
     return {
       provider,
@@ -156,8 +228,8 @@ export class AgentCliService {
       commandName: definition.commandName,
       installCommand: this.buildInstallCommand(provider),
       upgradeCommand: this.buildUpgradeCommand(provider),
-      providerSummary,
-      error: installed ? '' : (versionResult.stderr || '未检测到命令'),
+      providerSummary: this.getProviderSummary(provider),
+      error,
       lastCheckedAt: new Date().toISOString(),
     };
   }
@@ -172,7 +244,28 @@ export class AgentCliService {
 
   async installProvider(provider: AgentCliProvider): Promise<AgentCliStatus> {
     const definition = this.getDefinition(provider);
-    const args = [...definition.installArgs, '--registry', this.getResolvedRegistry()];
+    if (definition.installKind === 'python') {
+      const python = await this.resolvePythonCommand();
+      if (!python) {
+        throw new Error('未检测到可用的 Python 解释器');
+      }
+      const args = [
+        ...python.argsPrefix,
+        '-m',
+        'pip',
+        'install',
+        definition.packageName,
+        '--index-url',
+        this.getResolvedRegistry(provider)
+      ];
+      const result = await this.runCommand(python.executable, args);
+      if (result.code !== 0) {
+        throw new Error(result.stderr || result.stdout || `${definition.label} 安装失败`);
+      }
+      return this.detectProvider(provider);
+    }
+
+    const args = [...(definition.installArgs || []), '--registry', this.getResolvedRegistry(provider)];
     const result = await this.runCommand('npm', args);
     if (result.code !== 0) {
       throw new Error(result.stderr || result.stdout || `${definition.label} 安装失败`);
@@ -182,7 +275,29 @@ export class AgentCliService {
 
   async upgradeProvider(provider: AgentCliProvider): Promise<AgentCliStatus> {
     const definition = this.getDefinition(provider);
-    const args = ['install', '-g', `${definition.packageName}@latest`, '--registry', this.getResolvedRegistry()];
+    if (definition.installKind === 'python') {
+      const python = await this.resolvePythonCommand();
+      if (!python) {
+        throw new Error('未检测到可用的 Python 解释器');
+      }
+      const args = [
+        ...python.argsPrefix,
+        '-m',
+        'pip',
+        'install',
+        '--upgrade',
+        definition.packageName,
+        '--index-url',
+        this.getResolvedRegistry(provider)
+      ];
+      const result = await this.runCommand(python.executable, args);
+      if (result.code !== 0) {
+        throw new Error(result.stderr || result.stdout || `${definition.label} 升级失败`);
+      }
+      return this.detectProvider(provider);
+    }
+
+    const args = ['install', '-g', `${definition.packageName}@latest`, '--registry', this.getResolvedRegistry(provider)];
     const result = await this.runCommand('npm', args);
     if (result.code !== 0) {
       throw new Error(result.stderr || result.stdout || `${definition.label} 升级失败`);
@@ -190,7 +305,16 @@ export class AgentCliService {
     return this.detectProvider(provider);
   }
 
-  async executePrompt(provider: AgentCliProvider, prompt: string, cwd?: string): Promise<string> {
+  async executePrompt(
+    provider: AgentCliProvider,
+    prompt: string,
+    cwd?: string,
+    options?: AgentCliExecutionOptions
+  ): Promise<string> {
+    if (provider === 'openai-agents-python') {
+      return this.executeOpenAIAgentsPrompt(prompt, cwd, options);
+    }
+
     const definition = this.getDefinition(provider);
     const commandPath = await this.resolveCommandPath(definition.commandName);
     if (!commandPath) {
@@ -211,12 +335,100 @@ export class AgentCliService {
     return result.stdout.trim() || '命令已执行，但没有返回文本输出。';
   }
 
+  async getPythonRuntime(): Promise<AgentCliPythonRuntime | null> {
+    const runtime = await this.resolvePythonCommand();
+    if (!runtime) return null;
+    return {
+      command: runtime.executable,
+      argsPrefix: runtime.argsPrefix,
+      displayName: runtime.displayName,
+      resolvedPath: runtime.resolvedPath,
+    };
+  }
+
+  getOpenAIAgentsTurnRunnerPath(): string {
+    const childPath = window['path']?.getAilyChildPath?.();
+    if (childPath) {
+      return window['path'].join(childPath, 'scripts', 'openai_agents_turn_runner.py');
+    }
+
+    const electronPath = window['path']?.getElectronPath?.();
+    if (electronPath) {
+      return window['path'].resolve(electronPath, '..', 'child', 'scripts', 'openai_agents_turn_runner.py');
+    }
+
+    return '';
+  }
+
+  private async executeOpenAIAgentsPrompt(
+    prompt: string,
+    cwd?: string,
+    options?: AgentCliExecutionOptions
+  ): Promise<string> {
+    const python = await this.resolvePythonCommand();
+    if (!python) {
+      throw new Error('未检测到可用的 Python 解释器');
+    }
+
+    const scriptPath = this.getOpenAIAgentsRunnerPath();
+    if (!scriptPath || !window['fs']?.existsSync?.(scriptPath)) {
+      throw new Error('未找到 openai-agents Python 运行脚本');
+    }
+
+    const promptFile = this.writeTempFile('txt', prompt);
+    const configFile = this.writeTempFile('json', JSON.stringify(options?.modelConfig || {}, null, 2));
+
+    try {
+      const args = [
+        ...python.argsPrefix,
+        scriptPath,
+        '--prompt-file',
+        promptFile,
+        '--config-file',
+        configFile
+      ];
+      const result = await Promise.race([
+        this.runCommand(python.executable, args, cwd),
+        new Promise<CommandRunResult>((_, reject) =>
+          setTimeout(() => reject(new Error('OpenAI Agents Python 执行超时，请检查模型配置或网络连接')), 180000)
+        )
+      ]);
+      if (result.code !== 0) {
+        throw new Error(result.stderr || result.stdout || 'OpenAI Agents Python 执行失败');
+      }
+      return result.stdout.trim() || 'OpenAI Agents Python 已执行，但没有返回文本输出。';
+    } finally {
+      this.removeTempFile(promptFile);
+      this.removeTempFile(configFile);
+    }
+  }
+
   private getDefinition(provider: AgentCliProvider): AgentCliDefinition {
     const definition = this.providers.find(item => item.provider === provider);
     if (!definition) {
-      throw new Error(`未知的 Agent CLI 提供商: ${provider}`);
+      throw new Error(`未知的 Agent CLI 提供者: ${provider}`);
     }
     return definition;
+  }
+
+  private getResolvedNpmRegistry(): string {
+    const source = this.getInstallSource();
+    if (source === 'official') return OFFICIAL_NPM_REGISTRY;
+    if (source === 'custom') {
+      const customRegistry = this.getCustomRegistry().trim();
+      return customRegistry || DOMESTIC_NPM_REGISTRY;
+    }
+    return DOMESTIC_NPM_REGISTRY;
+  }
+
+  private getResolvedPythonIndex(): string {
+    const source = this.getInstallSource();
+    if (source === 'official') return OFFICIAL_PYPI_INDEX;
+    if (source === 'custom') {
+      const customRegistry = this.getCustomRegistry().trim();
+      return customRegistry || DOMESTIC_PYPI_INDEX;
+    }
+    return DOMESTIC_PYPI_INDEX;
   }
 
   private stringifyCommand(command: string, args: string[]): string {
@@ -270,6 +482,48 @@ export class AgentCliService {
     return '';
   }
 
+  private async resolvePythonCommand(): Promise<PythonCommandResolution | null> {
+    const bundledPythonPath = window['env']?.get ? await window['env'].get('AILY_PYTHON_PATH') : '';
+    if (bundledPythonPath && window['fs']?.existsSync?.(bundledPythonPath)) {
+      try {
+        const versionResult = await this.runCommand(bundledPythonPath, ['--version']);
+        if (versionResult.code === 0) {
+          return {
+            executable: bundledPythonPath,
+            argsPrefix: [],
+            displayName: 'bundled-python',
+            resolvedPath: bundledPythonPath,
+          };
+        }
+      } catch {
+        // continue to fallback detection
+      }
+    }
+
+    const candidates: Array<Omit<PythonCommandResolution, 'resolvedPath'>> = [
+      { executable: 'py', argsPrefix: ['-3'], displayName: 'py -3' },
+      { executable: 'python', argsPrefix: [], displayName: 'python' },
+      { executable: 'python3', argsPrefix: [], displayName: 'python3' },
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const versionResult = await this.runCommand(candidate.executable, [...candidate.argsPrefix, '--version']);
+        if (versionResult.code === 0) {
+          const resolvedPath = await this.resolveCommandPath(candidate.executable);
+          return {
+            ...candidate,
+            resolvedPath: resolvedPath || candidate.displayName,
+          };
+        }
+      } catch {
+        // ignore and continue
+      }
+    }
+
+    return null;
+  }
+
   private async runCommand(command: string, args: string[], cwd?: string): Promise<CommandRunResult> {
     return new Promise<CommandRunResult>((resolve, reject) => {
       let stdout = '';
@@ -313,6 +567,48 @@ export class AgentCliService {
       return parts.join(' | ');
     } catch {
       return '';
+    }
+  }
+
+  private getProviderSummary(provider: AgentCliProvider): string {
+    if (provider === 'codex-cli') {
+      return this.readCodexProviderSummary();
+    }
+    if (provider === 'openai-agents-python') {
+      return '使用当前已选自定义模型，若未配置则回退到 OPENAI_* 环境变量';
+    }
+    return '';
+  }
+
+  private getOpenAIAgentsRunnerPath(): string {
+    const childPath = window['path']?.getAilyChildPath?.();
+    if (childPath) {
+      return window['path'].join(childPath, 'scripts', 'openai_agents_runner.py');
+    }
+
+    const electronPath = window['path']?.getElectronPath?.();
+    if (electronPath) {
+      return window['path'].resolve(electronPath, '..', 'child', 'scripts', 'openai_agents_runner.py');
+    }
+
+    return '';
+  }
+
+  private writeTempFile(ext: 'txt' | 'json', content: string): string {
+    const tmpDir = window['os']?.tmpdir?.() || '.';
+    const fileName = `aily-openai-agents-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const filePath = window['path'].join(tmpDir, fileName);
+    window['fs'].writeFileSync(filePath, content);
+    return filePath;
+  }
+
+  private removeTempFile(filePath: string): void {
+    try {
+      if (filePath && window['fs']?.existsSync?.(filePath)) {
+        window['fs'].unlinkSync(filePath);
+      }
+    } catch {
+      // ignore cleanup errors
     }
   }
 }

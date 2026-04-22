@@ -74,10 +74,19 @@ export class SessionLifecycleHelper {
       { icon: 'fa-light fa-pen', action: 'rename-history', title: '重命名' },
       { icon: 'fa-light fa-trash', action: 'delete-history', title: '删除' },
     ];
-    const entries = this.engine.chatHistoryService.getHistoryList('current-project',
-      AilyHost.get().project.currentProjectPath || AilyHost.get().project.projectRootPath,
-      AilyHost.get().project.projectRootPath
-    );
+    const currentProjectPath = AilyHost.get().project.currentProjectPath || null;
+    const projectRootPath = AilyHost.get().project.projectRootPath || null;
+    const normalizePath = (value: string | null) => (value || '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+    const activeProjectPath =
+      currentProjectPath && normalizePath(currentProjectPath) !== normalizePath(projectRootPath)
+        ? currentProjectPath
+        : null;
+    let entries = activeProjectPath
+      ? this.engine.chatHistoryService.getHistoryList('current-project', activeProjectPath, projectRootPath)
+      : this.engine.chatHistoryService.getHistoryList('all');
+    if (entries.length === 0 && activeProjectPath) {
+      entries = this.engine.chatHistoryService.getHistoryList('all');
+    }
     this.engine.menuManager.historyList = entries.map(e => ({
       sessionId: e.sessionId,
       name: e.title || 'q' + e.createdAt,

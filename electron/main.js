@@ -1150,6 +1150,12 @@ function loadEnv() {
   process.env.AILY_7ZA_PATH = path.join(childPath, isWin32 ? "7za.exe" : "7zz");
   // rg path
   process.env.AILY_RG_PATH = path.join(childPath, isWin32 ? "rg.exe" : "rg");
+  // bundled python runtime path
+  process.env.AILY_PYTHON_HOME = path.join(childPath, 'python-runtime');
+  process.env.AILY_PYTHON_PATH = path.join(
+    process.env.AILY_PYTHON_HOME,
+    isWin32 ? 'python.exe' : 'bin/python3'
+  );
   // probe-rs path
   process.env.AILY_PROBE_RS_PATH = path.join(childPath, "probe-rs", "probe-rs" + (isWin32 ? ".exe" : ""));
   // aily builder path
@@ -1183,6 +1189,16 @@ function loadEnv() {
   if (fs.existsSync(probeRsDir)) {
     process.env.PATH = `${process.env.PATH}${path.delimiter}${probeRsDir}`;
   }
+  const bundledPythonDirs = [
+    process.env.AILY_PYTHON_HOME,
+    path.join(process.env.AILY_PYTHON_HOME, 'DLLs'),
+    path.join(process.env.AILY_PYTHON_HOME, 'Library', 'bin'),
+  ];
+  bundledPythonDirs.forEach((dir) => {
+    if (fs.existsSync(dir)) {
+      process.env.PATH = `${process.env.PATH}${path.delimiter}${dir}`;
+    }
+  });
 
   // 当前系统语言
   process.env.AILY_SYSTEM_LANG = app.getLocale();

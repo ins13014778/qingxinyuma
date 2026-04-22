@@ -60,3 +60,9 @@ aily-todos/*.json
 docs/performance-optimization.md
 /child/rg.exe
 /child/probe-rs
+.tmp-openai-agents-python/
+child/scripts/__pycache__/
+child/windows/python-runtime/
+.claude/
+.omc/
+.omx/logs/

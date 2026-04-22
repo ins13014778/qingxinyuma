@@ -149,7 +149,7 @@ export class ChatHistoryService implements OnDestroy {
    */
   getHistoryList(filter: HistoryFilterMode = 'all', projectPath?: string | null, projectRootPath?: string | null): SessionIndexEntry[] {
     this.ensureIndexLoaded();
-    let result = [...this.index];
+    let result = this.index.filter(entry => entry.dataAvailable !== false);
 
     if (filter === 'current-project' && projectPath) {
       result = result.filter(e =>

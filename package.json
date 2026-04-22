@@ -1,7 +1,7 @@
 {
   "name": "qingxinyuma",
   "productName": "青芯驭码",
-  "version": "0.9.40",
+  "version": "0.9.45",
   "author": "coloz",
   "description": "青芯驭码",
   "main": "electron/main.js",
@@ -139,7 +139,8 @@
     "start": "ng serve",
     "watch": "ng build --watch --configuration development",
     "electron": "concurrently \"npm start\" \"wait-on tcp:4200 && electron ./electron/main.js --serve\"",
-    "build": "ng build --base-href ./ && electron-builder build",
+    "prepare:openai-agents-runtime": "node ./child/scripts/prepare_openai_agents_runtime.js",
+    "build": "npm run prepare:openai-agents-runtime && ng build --base-href ./ && electron-builder build",
     "build:mac": "ng build --base-href ./ && electron-builder --mac --arm64 --x64",
     "build:mac:universal": "ng build --base-href ./ && electron-builder --mac --universal"
   },

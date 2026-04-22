@@ -178,9 +178,10 @@ export class SettingsComponent {
   agentCliStatuses: Record<AgentCliProvider, AgentCliStatus> = {
     'codex-cli': this.buildEmptyStatus('codex-cli'),
     'claude-code': this.buildEmptyStatus('claude-code'),
+    'openai-agents-python': this.buildEmptyStatus('openai-agents-python'),
   };
   agentCliBusy: Partial<Record<AgentCliProvider, 'detecting' | 'installing' | 'upgrading'>> = {};
-  readonly agentCliProviders: AgentCliProvider[] = ['codex-cli', 'claude-code'];
+  readonly agentCliProviders: AgentCliProvider[] = ['codex-cli', 'claude-code', 'openai-agents-python'];
   readonly installSourceOptions: { label: string; value: AgentCliInstallSource }[] = [
     { label: '默认国内', value: 'domestic' },
     { label: '官方', value: 'official' },
@@ -231,6 +232,12 @@ export class SettingsComponent {
     return this.agentCliConfig.backend || 'custom-model';
   }
 
+  get activeInstallProvider(): AgentCliProvider {
+    return this.currentAgentBackend === 'custom-model'
+      ? 'codex-cli'
+      : this.currentAgentBackend;
+  }
+
   async onAgentCliSourceChange(value: AgentCliInstallSource) {
     this.agentCliConfig.installSource = value;
     this.configService.save();
@@ -256,7 +263,11 @@ export class SettingsComponent {
   }
 
   getAgentCliResolvedRegistry(): string {
-    return this.agentCliService.getResolvedRegistry();
+    return this.agentCliService.getResolvedRegistry(this.activeInstallProvider);
+  }
+
+  isBundledProvider(provider: AgentCliProvider): boolean {
+    return provider === 'openai-agents-python';
   }
 
   async detectAgentCli(provider: AgentCliProvider) {
@@ -297,9 +308,21 @@ export class SettingsComponent {
   }
 
   private buildEmptyStatus(provider: AgentCliProvider): AgentCliStatus {
-    const label = provider === 'codex-cli' ? 'Codex CLI' : 'Claude Code';
-    const commandName = provider === 'codex-cli' ? 'codex' : 'claude';
-    const packageName = provider === 'codex-cli' ? '@openai/codex' : '@anthropic-ai/claude-code';
+    const label = provider === 'codex-cli'
+      ? 'Codex CLI'
+      : provider === 'claude-code'
+        ? 'Claude Code'
+        : 'OpenAI Agents Python';
+    const commandName = provider === 'codex-cli'
+      ? 'codex'
+      : provider === 'claude-code'
+        ? 'claude'
+        : 'python';
+    const packageName = provider === 'codex-cli'
+      ? '@openai/codex'
+      : provider === 'claude-code'
+        ? '@anthropic-ai/claude-code'
+        : 'openai-agents';
     return {
       provider,
       installed: false,

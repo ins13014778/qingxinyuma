@@ -145,7 +145,9 @@ export class AilyChatComponent implements OnDestroy {
 
   get currentModel() { return this.engine.currentModel; }
 
-  get currentModelName() { return this.engine.currentModelName ? '小青' : ''; }
+  get currentModelName() {
+    return this.engine.currentModelName || this.engine.currentModel?.model || '';
+  }
 
   get contextBudget$() { return this.engine.contextBudget$; }
 
@@ -165,7 +167,20 @@ export class AilyChatComponent implements OnDestroy {
   }
 
   get currentAgentBackendName(): string {
-    return this.agentCliService.getProviderLabel(this.currentAgentBackend);
+    switch (this.currentAgentBackend) {
+      case 'openai-agents-python':
+        return 'OpenAI Agent';
+      case 'custom-model':
+        return '模型直连';
+      default:
+        return this.agentCliService.getProviderLabel(this.currentAgentBackend);
+    }
+  }
+
+  get currentModeTooltip(): string {
+    return this.currentMode === 'agent'
+      ? this.translate.instant('AILY_CHAT.MODE_AGENT_FULL')
+      : this.translate.instant('AILY_CHAT.MODE_QA_FULL');
   }
 
   get isServerAiEnabled(): boolean {
@@ -583,6 +598,12 @@ export class AilyChatComponent implements OnDestroy {
         action: 'select-backend',
         current: this.currentAgentBackend === 'claude-code',
         data: { backend: 'claude-code' }
+      },
+      {
+        name: 'OpenAI Agents Python',
+        action: 'select-backend',
+        current: this.currentAgentBackend === 'openai-agents-python',
+        data: { backend: 'openai-agents-python' }
       }
     ];
   }

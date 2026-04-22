@@ -20,6 +20,8 @@ import { XAilyErrorViewerComponent } from './x-aily-error-viewer/x-aily-error-vi
 import { XAilyTaskActionViewerComponent } from './x-aily-task-action-viewer/x-aily-task-action-viewer.component';
 import { XAilyQuestionViewerComponent } from './x-aily-question-viewer/x-aily-question-viewer.component';
 import { XAilyApprovalViewerComponent } from './x-aily-approval-viewer/x-aily-approval-viewer.component';
+import { XAilyRunStateViewerComponent } from './x-aily-runstate-viewer/x-aily-runstate-viewer.component';
+import { XAilyTraceViewerComponent } from './x-aily-trace-viewer/x-aily-trace-viewer.component';
 import { XAilyCodeViewerComponent } from './x-aily-code-viewer/x-aily-code-viewer.component';
 import { XAilyDefaultViewerComponent } from './x-aily-default-viewer/x-aily-default-viewer.component';
 import { NzModalService } from 'ng-zorro-antd/modal';
@@ -37,6 +39,7 @@ const AILY_TYPES = [
   'aily-state', 'aily-button', 'aily-board', 'aily-library',
   'aily-think', 'aily-mermaid', 'aily-context', 'aily-blockly',
   'aily-error', 'aily-task-action', 'aily-question', 'aily-approval',
+  'aily-runstate', 'aily-trace',
 ] as const;
 
 /**
@@ -76,6 +79,8 @@ const AILY_TYPES = [
     XAilyTaskActionViewerComponent,
     XAilyQuestionViewerComponent,
     XAilyApprovalViewerComponent,
+    XAilyRunStateViewerComponent,
+    XAilyTraceViewerComponent,
     XAilyCodeViewerComponent,
     XAilyDefaultViewerComponent,
   ],
@@ -162,6 +167,12 @@ const AILY_TYPES = [
     }
     @if (isType('aily-approval') && parsedData) {
       <x-aily-approval-viewer [data]="parsedData" />
+    }
+    @if (isType('aily-runstate') && parsedData) {
+      <x-aily-runstate-viewer [data]="parsedData" />
+    }
+    @if (isType('aily-trace') && parsedData) {
+      <x-aily-trace-viewer [data]="parsedData" />
     }
     @if (isRegularCode) {
       <x-aily-code-viewer [children]="children" [block]="block" [lang]="lang" />

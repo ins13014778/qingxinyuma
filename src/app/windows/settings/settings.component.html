@@ -171,6 +171,11 @@
                     (click)="onAgentCliBackendChange('claude-code')">
                     Claude Code
                   </button>
+                  <button nz-button nzSize="small"
+                    [nzType]="currentAgentBackend === 'openai-agents-python' ? 'primary' : 'default'"
+                    (click)="onAgentCliBackendChange('openai-agents-python')">
+                    OpenAI Agents Python
+                  </button>
                 </div>
               </div>
 

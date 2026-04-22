@@ -52,6 +52,10 @@ import { TurnManager } from '../core/turn-manager';
 import { AilyChatHookService } from './chat-hook.service';
 import { ChatViewAdapter } from './chat-view-adapter';
 import { ChatPerformanceTracer } from './chat-perf-tracer';
+import { OpenAIAgentsBackendService } from './openai-agents-backend.service';
+import { OpenAIAgentsRunStateService } from './openai-agents-runstate.service';
+import { OpenAIAgentsTraceService } from './openai-agents-trace.service';
+import { getRegisteredSubagents } from '../tools/runSubagentTool';
 
 @Injectable()
 export class ChatEngineService {
@@ -213,6 +217,9 @@ export class ChatEngineService {
     public todoUpdateService: TodoUpdateService,
     private configService: ConfigService,
     private agentCliService: AgentCliService,
+    private openAIAgentsBackendService: OpenAIAgentsBackendService,
+    private openAIAgentsRunStateService: OpenAIAgentsRunStateService,
+    private openAIAgentsTraceService: OpenAIAgentsTraceService,
   ) {
     // 初始化 viewAdapter（需要 ngZone 已注入）
     (this as any).viewAdapter = new ChatViewAdapter(
@@ -263,6 +270,7 @@ export class ChatEngineService {
     registerToolApprovalCallback((request) => this._handleToolApproval(request));
 
     this.setupSubscriptions();
+    this.showPendingOpenAIAgentsRunStates();
   }
 
   /**
@@ -491,7 +499,7 @@ export class ChatEngineService {
   }
 
   public async executeRegisteredTool(
-    toolCallId: string, toolName: string, toolArgs: any
+    toolCallId: string, toolName: string, toolArgs: any, options?: { skipApproval?: boolean }
   ): Promise<{ toolResult: any; resultState: string; resultText: string }> {
     const tool = ToolRegistry.get(toolName);
     if (!tool) {
@@ -502,7 +510,7 @@ export class ChatEngineService {
 
     // ── 工具审批拦截 ──
     // 对需要审批的工具，等待用户确认后再执行（审批 UI 由 aily-approval 块提供，不需要额外 aily-state）
-    if (toolRequiresApproval(toolName, toolArgs)) {
+    if (!options?.skipApproval && toolRequiresApproval(toolName, toolArgs)) {
       const approval = await requestToolApproval(toolCallId, toolName, toolArgs);
       if (!approval.approved) {
         const rejectReason = approval.reason || '用户拒绝执行';
@@ -732,7 +740,11 @@ Do not create non-existent boards and libraries.
         this.msg.appendMessage('aily', '[thinking...]');
         this.currentMessageSource = 'mainAgent';
         if (clear) { this.inputValue = ''; }
-        this.sendToLocalCli(backend, llmText);
+        if (backend === 'openai-agents-python') {
+          this.sendToOpenAIAgents(llmText);
+        } else {
+          this.sendToLocalCli(backend, llmText);
+        }
         return;
       }
 
@@ -790,7 +802,14 @@ Do not create non-existent boards and libraries.
 
     try {
       const cwd = this.getCurrentProjectPath() || AilyHost.get().project.currentProjectPath || AilyHost.get().project.projectRootPath || undefined;
-      const output = await this.agentCliService.executePrompt(backend, prompt, cwd);
+      const output = await this.agentCliService.executePrompt(
+        backend,
+        prompt,
+        cwd,
+        backend === 'openai-agents-python'
+          ? { modelConfig: this.chatService.getActiveDirectModelConfig() }
+          : undefined
+      );
       this.list[this.list.length - 1].content = output;
     } catch (error: any) {
       const message = error?.message || `${this.agentCliService.getProviderLabel(backend)} 执行失败`;
@@ -802,6 +821,372 @@ Do not create non-existent boards and libraries.
       this.isCompleted = true;
       this.session.saveCurrentSession();
     }
+  }
+
+  private async sendToOpenAIAgents(prompt: string): Promise<void> {
+    try { window['log']?.info?.(`[OpenAIAgents] sendToOpenAIAgents start session=${this.sessionId || ''} prompt=${(prompt || '').slice(0, 120)}`); } catch {}
+    this._currentOpenAIAgentsTraceId = null;
+    const status = await this.agentCliService.detectProvider('openai-agents-python');
+    try { window['log']?.info?.(`[OpenAIAgents] provider detected installed=${status.installed} version=${status.version || ''} path=${status.commandPath || ''} error=${status.error || ''}`); } catch {}
+    if (!status.installed) {
+      this.list[this.list.length - 1].content = `\n\`\`\`aily-error\n${JSON.stringify({ message: 'OpenAI Agents Python 尚未安装，请先到设置页的 Agent CLI 管理中安装。' })}\n\`\`\`\n\n`;
+      this.viewAdapter.markLastMessageDone();
+      this.isWaiting = false;
+      try { window['log']?.warn?.('[OpenAIAgents] provider not installed'); } catch {}
+      return;
+    }
+
+    const modelConfig = this.chatService.getActiveDirectModelConfig();
+    try { window['log']?.info?.(`[OpenAIAgents] modelConfig exists=${!!modelConfig} model=${modelConfig?.model || ''} baseUrl=${modelConfig?.baseUrl || ''}`); } catch {}
+    if (!modelConfig) {
+      this.list[this.list.length - 1].content = `\n\`\`\`aily-error\n${JSON.stringify({ message: '当前未配置可用的自定义模型，无法使用 OpenAI Agents Python。' })}\n\`\`\`\n\n`;
+      this.viewAdapter.markLastMessageDone();
+      this.isWaiting = false;
+      try { window['log']?.warn?.('[OpenAIAgents] missing model config'); } catch {}
+      return;
+    }
+
+    try {
+      if (!this.sessionId) {
+        this.chatService.currentSessionId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      }
+      try { window['log']?.info?.(`[OpenAIAgents] session prepared sessionId=${this.sessionId}`); } catch {}
+
+      this.turnManager.startTurn(prompt);
+      try { window['log']?.info?.('[OpenAIAgents] turnManager.startTurn done'); } catch {}
+
+      this.currentTurnAssistantContent = '';
+      this.currentTurnToolCalls = [];
+      this.pendingToolResults = [];
+      this.toolCallingIteration = 0;
+      this.activeToolExecutions = 0;
+      this.sseStreamCompleted = false;
+      this.currentStatelessMode = true;
+      this.abortController = new AbortController();
+
+      this.ensureAbsExport();
+      try { window['log']?.info?.('[OpenAIAgents] ensureAbsExport done'); } catch {}
+
+      this.editCheckpointService.autoSaveEdits = this.ailyChatConfigService.autoSaveEdits;
+      this.saveCheckpointToDisk();
+      try { window['log']?.info?.('[OpenAIAgents] saveCheckpointToDisk done'); } catch {}
+
+      this.editCheckpointService.startTurn(
+        0,
+        this.conversationMessages.length - 1,
+        this.list.length - 1,
+        this.turnManager.currentTurnId
+      );
+      try { window['log']?.info?.('[OpenAIAgents] editCheckpointService.startTurn done'); } catch {}
+
+      const toolSets = this.getOpenAIAgentsToolSets();
+      try { window['log']?.info?.(`[OpenAIAgents] toolSets ready main=${toolSets.mainTools.length} schematic=${toolSets.schematicTools.length}`); } catch {}
+
+      const sessionDbPath = this.getOpenAIAgentsSessionDbPath();
+      const mcpConfigPath = this.getOpenAIAgentsMcpConfigPath();
+      try { window['log']?.info?.(`[OpenAIAgents] paths ready sessionDb=${sessionDbPath} mcp=${mcpConfigPath || ''}`); } catch {}
+
+      const builtInAgents = this.getOpenAIAgentsBuiltInAgents();
+      try { window['log']?.info?.(`[OpenAIAgents] builtInAgents ready count=${builtInAgents.length}`); } catch {}
+
+      const cwd = this.getCurrentProjectPath() || AilyHost.get().project.currentProjectPath || AilyHost.get().project.projectRootPath || undefined;
+      try { window['log']?.info?.(`[OpenAIAgents] dispatch runner cwd=${cwd || ''}`); } catch {}
+      const output = await this.openAIAgentsBackendService.runTurn(
+        {
+          userInput: prompt,
+          sessionId: this.sessionId,
+          sessionDbPath,
+          runStatePath: this.getOpenAIAgentsRunStatePath(),
+          mcpConfigPath,
+          builtInAgents,
+          mainTools: toolSets.mainTools,
+          schematicTools: toolSets.schematicTools,
+          modelConfig,
+          cwd,
+        },
+        {
+          onRunnerEvent: (event: any) => {
+            if (event?.type === 'runner_info') {
+              this.msg.appendMessage('aily', `\n> Runner backend: ${event.model_backend || 'unknown'}\n\n`, 'mainAgent');
+            } else if (event?.type === 'agent_updated_stream_event' && event.agent_name) {
+              this.msg.appendMessage('aily', `\n> Agent switched: ${event.agent_name}\n\n`, 'mainAgent');
+            } else if (event?.type === 'guardrail_tripwire') {
+              this.msg.appendMessage('aily', `\n> Guardrail triggered: ${event.guardrail_kind || 'unknown'}\n\n`, 'mainAgent');
+            } else if (event?.type === 'tool_budget_skip' && event.tool_name) {
+              this.msg.appendMessage(
+                'aily',
+                `\n> Tool budget stop: ${event.agent_name || event.tracker || 'agent'} -> ${event.tool_name}\n\n`,
+                'mainAgent'
+              );
+            } else if (event?.type === 'tool_fast_degrade' && event.tool_name) {
+              this.msg.appendMessage(
+                'aily',
+                `\n> Fast degrade: ${event.tool_name} failed, switching to concise summary mode.\n\n`,
+                'mainAgent'
+              );
+            }
+            const traceId = this._currentOpenAIAgentsTraceId;
+            if (traceId) {
+              this.openAIAgentsTraceService.appendEvent(traceId, event);
+            }
+          },
+          onApprovalRequest: async (approvalCall) => {
+            const approval = await requestToolApproval(
+              approvalCall.callId,
+              approvalCall.toolName,
+              approvalCall.args
+            );
+            return {
+              approved: !!approval.approved,
+              reason: approval.reason,
+            };
+          },
+          onTraceInfo: (_traceId: string, traceUrl: string) => {
+            if (!_traceId) return;
+            this._currentOpenAIAgentsTraceId = _traceId;
+            this.openAIAgentsTraceService.startTrace(_traceId, traceUrl, this.sessionId || '');
+            const traceData = this.openAIAgentsTraceService.getTrace(_traceId);
+            this.msg.appendMessage(
+              'aily',
+              `\n\`\`\`aily-trace\n${JSON.stringify({
+                title: 'OpenAI Agents Trace',
+                traceId: _traceId,
+                traceUrl,
+                events: traceData?.events || [],
+              })}\n\`\`\`\n\n`,
+              'mainAgent'
+            );
+          },
+          onChunk: (content: string) => {
+            if (!content) return;
+            this.currentTurnAssistantContent += content;
+            this.msg.appendStreaming('aily', content, 'mainAgent');
+          },
+          onToolCall: async (call) => {
+            this.currentTurnToolCalls.push({
+              tool_id: call.toolId,
+              tool_name: call.toolName,
+              tool_args: call.rawArgs,
+            });
+
+            if (call.toolName === 'run_subagent') {
+              const toolResult = await this.subagentSessionService.executeSubagentToolCall({
+                tool_id: call.toolId,
+                tool_name: call.toolName,
+                tool_args: call.rawArgs,
+                tool_type: 'subagent',
+                agent_name: call.args?.agent || 'unknown',
+              });
+              return {
+                content: toolResult,
+                is_error: false,
+              };
+            }
+
+            if (call.toolName.startsWith('mcp_')) {
+              this.msg.startToolCall(call.toolId, call.toolName, `执行工具: ${call.toolName}`, call.args);
+              const mcpName = call.toolName.substring(4);
+              const toolResult = await this.mcpService.use_tool(mcpName, call.args);
+              const resultState = toolResult?.is_error ? ToolCallState.ERROR : ToolCallState.DONE;
+              const resultText = toolResult?.is_error ? `${call.toolName} 执行失败` : `${call.toolName} 执行成功`;
+              this.msg.completeToolCall(call.toolId, call.toolName, resultState, resultText, 'mainAgent');
+              return {
+                content: typeof toolResult?.content === 'string' ? toolResult.content : JSON.stringify(toolResult?.content ?? ''),
+                is_error: !!toolResult?.is_error,
+              };
+            }
+
+            if (!ToolRegistry.has(call.toolName)) {
+              return {
+                content: `未知工具: ${call.toolName}`,
+                is_error: true,
+              };
+            }
+
+            const result = await this.executeRegisteredTool(call.toolId, call.toolName, call.args, { skipApproval: true });
+            return {
+              content: typeof result.toolResult?.content === 'string'
+                ? result.toolResult.content
+                : JSON.stringify(result.toolResult?.content ?? ''),
+              is_error: !!result.toolResult?.is_error,
+            };
+          },
+        }
+      );
+
+      if (!this.currentTurnAssistantContent && output) {
+        this.currentTurnAssistantContent = output;
+        this.list[this.list.length - 1].content = output;
+      }
+
+      try { window['log']?.info?.(`[OpenAIAgents] runner completed outputLen=${(output || '').length}`); } catch {}
+      await this.finalizeOpenAIAgentsTurn();
+    } catch (error: any) {
+      const message = error?.message || 'OpenAI Agents Python 执行失败';
+      try { window['log']?.error?.(`[OpenAIAgents] runner failed message=${message}`); } catch {}
+      this.list[this.list.length - 1].content = `\n\`\`\`aily-error\n${JSON.stringify({ message })}\n\`\`\`\n\n`;
+      this.viewAdapter.markLastMessageDone();
+      this.currentMessageSource = 'mainAgent';
+      this.isWaiting = false;
+      this.isCompleted = true;
+      this.currentStatelessMode = false;
+      this.abortController = null;
+      this.session.saveCurrentSession();
+    }
+  }
+
+  private getOpenAIAgentsToolSets(): { mainTools: any[]; schematicTools: any[] } {
+    const mergeSchemas = (base: any[], extra: any[]) => {
+      const byName = new Map<string, any>();
+      for (const item of [...base, ...extra]) {
+        if (!item?.name || !item?.input_schema) continue;
+        byName.set(item.name, item);
+      }
+      return [...byName.values()];
+    };
+
+    let mainTools = mergeSchemas(
+      this.tools.filter(tool => !tool.agents || tool.agents.includes('mainAgent')),
+      ToolRegistry.getSchemasForAgent('mainAgent')
+    );
+    let schematicTools = mergeSchemas(
+      this.tools.filter(tool => tool.agents && tool.agents.includes('schematicAgent')),
+      ToolRegistry.getSchemasForAgent('schematicAgent')
+    );
+    const mainAgentConfig = this.ailyChatConfigService.getAgentToolsConfig('mainAgent');
+    const enabledToolNames = mainAgentConfig?.enabledTools || [];
+    const disabledToolNames = new Set(mainAgentConfig?.disabledTools || []);
+    if (enabledToolNames.length > 0) {
+      const enabledSet = new Set(enabledToolNames);
+      mainTools = mainTools.filter(tool => enabledSet.has(tool.name) || !disabledToolNames.has(tool.name));
+    } else if (disabledToolNames.size > 0) {
+      mainTools = mainTools.filter(tool => !disabledToolNames.has(tool.name));
+    }
+
+    const schematicConfig = this.ailyChatConfigService.getAgentToolsConfig('schematicAgent');
+    const schematicEnabled = schematicConfig?.enabledTools || [];
+    const schematicDisabled = new Set(schematicConfig?.disabledTools || []);
+    if (schematicEnabled.length > 0) {
+      const enabledSet = new Set(schematicEnabled);
+      schematicTools = schematicTools.filter(tool => enabledSet.has(tool.name) || !schematicDisabled.has(tool.name));
+    } else if (schematicDisabled.size > 0) {
+      schematicTools = schematicTools.filter(tool => !schematicDisabled.has(tool.name));
+    }
+
+    return {
+      mainTools: mainTools.map(tool => ({
+        ...tool,
+        requires_approval: toolRequiresApproval(tool.name),
+      })),
+      schematicTools: schematicTools.map(tool => ({
+        ...tool,
+        requires_approval: toolRequiresApproval(tool.name),
+      })),
+    };
+  }
+
+  private getOpenAIAgentsBuiltInAgents(): Array<{
+    name: string;
+    displayName: string;
+    description: string;
+    useCases?: string[];
+    suggestedContext?: string;
+  }> {
+    return getRegisteredSubagents()
+      .filter(agent => agent.name !== 'schematicAgent')
+      .map(agent => ({
+      name: agent.name,
+      displayName: agent.displayName,
+      description: agent.description,
+      useCases: agent.useCases,
+      suggestedContext: agent.suggestedContext,
+    }));
+  }
+
+  private getOpenAIAgentsSessionDbPath(): string {
+    const appDataPath = window['path']?.getAppDataPath?.();
+    if (!appDataPath) {
+      return ':memory:';
+    }
+    return window['path'].join(appDataPath, 'openai-agents', 'sessions.sqlite3');
+  }
+
+  private getOpenAIAgentsRunStatePath(): string {
+    const appDataPath = window['path']?.getAppDataPath?.();
+    if (!appDataPath) {
+      return '';
+    }
+    return window['path'].join(appDataPath, 'openai-agents', `${this.sessionId || 'default'}.runstate.json`);
+  }
+
+  private _currentOpenAIAgentsTraceId: string | null = null;
+
+  private showPendingOpenAIAgentsRunStates(): void {
+    const pending = this.openAIAgentsRunStateService.listPending();
+    if (!pending.length) return;
+
+    for (const item of pending.slice(0, 3)) {
+      this.msg.appendMessage(
+        'aily',
+        `\n\`\`\`aily-runstate\n${JSON.stringify({
+          title: '检测到待恢复的 OpenAI Agents 会话',
+          message: `会话 ${item.sessionId} 在 ${item.updatedAt} 中断，可能正在等待审批或恢复执行。`,
+          sessionId: item.sessionId,
+        })}\n\`\`\`\n\n`,
+        'mainAgent'
+      );
+    }
+  }
+
+  private getOpenAIAgentsMcpConfigPath(): string | undefined {
+    const appDataPath = window['path']?.getAppDataPath?.();
+    if (!appDataPath) {
+      return undefined;
+    }
+    const primary = window['path'].join(appDataPath, 'mcp', 'mcp.json');
+    if (window['fs']?.existsSync?.(primary)) {
+      return primary;
+    }
+    return undefined;
+  }
+
+  private async finalizeOpenAIAgentsTurn(): Promise<void> {
+    this.turnManager.finalizeTurn(this.currentTurnAssistantContent || '');
+    const toolSets = this.getOpenAIAgentsToolSets();
+    await this.contextBudgetService.updateBudgetAsync(this.turnManager.buildMessages(), toolSets.mainTools);
+    this.editCheckpointService.commitCurrentTurn();
+
+    if (this._currentOpenAIAgentsTraceId) {
+      const traceData = this.openAIAgentsTraceService.getTrace(this._currentOpenAIAgentsTraceId);
+      if (traceData) {
+        this.msg.appendMessage(
+          'aily',
+          `\n\`\`\`aily-trace\n${JSON.stringify({
+            title: 'OpenAI Agents Trace',
+            traceId: traceData.traceId,
+            traceUrl: traceData.traceUrl,
+            events: traceData.events,
+          })}\n\`\`\`\n\n`,
+          'mainAgent'
+        );
+      }
+    }
+
+    if (this.editCheckpointService.hasEditsInCurrentTurn()) {
+      if (this.ailyChatConfigService.autoSaveEdits) {
+        this.editCheckpointService.acceptAllAsBaseline();
+        this.editCheckpointService.dismissSummary();
+      } else {
+        const summary = this.editCheckpointService.getEditsSummary();
+        this.editCheckpointService.publishSummary(summary);
+      }
+    }
+
+    this.viewAdapter.markLastMessageDone();
+    this.currentMessageSource = 'mainAgent';
+    this.isWaiting = false;
+    this.isCompleted = true;
+    this.session.saveCurrentSession();
   }
 
   private sendMessageWithRetry(sessionId: string, text: string, sender: string, clear: boolean, retryCount: number): void {
@@ -874,6 +1259,7 @@ Do not create non-existent boards and libraries.
       this.abortController.abort();
       this.abortController = null;
     }
+    this.openAIAgentsBackendService.cancelCurrentRun().catch(() => {});
     // 取消正在进行的前台/后台摘要（避免 stop 后仍消耗 LLM 资源）
     this.contextBudgetService.backgroundSummarizer.cancelActive();
     const wasStatelessTurn = this.currentStatelessMode;
@@ -1103,6 +1489,8 @@ Do not create non-existent boards and libraries.
       case 'rejectFile': this.onRejectFile(customEvent.detail?.filePath); break;
       case 'restoreCheckpoint': this.restoreToCheckpoint(customEvent.detail.listIndex); break;
       case 'newChat': this.newChat(); break;
+      case 'resumeRunState': this.resumeOpenAIAgentsRunState(customEvent.detail?.sessionId); break;
+      case 'dismissRunState': this.dismissOpenAIAgentsRunState(customEvent.detail?.sessionId); break;
       case 'dismiss': break;
       default: console.warn('未知的任务操作:', action);
     }
@@ -1120,6 +1508,23 @@ Do not create non-existent boards and libraries.
     await this.send('user', '请重试上次的操作。', false);
     this.scrollManager.autoScrollEnabled = true;
     this.scrollManager.scrollToBottom();
+  }
+
+  async resumeOpenAIAgentsRunState(sessionId?: string): Promise<void> {
+    if (this.isWaiting || !sessionId) return;
+    this.saveCurrentSession();
+    this.chatService.currentSessionId = sessionId;
+    this.list = [];
+    this.getHistory();
+    this.isWaiting = true;
+    this.msg.appendMessage('aily', '[thinking...]');
+    this.currentMessageSource = 'mainAgent';
+    await this.sendToOpenAIAgents('');
+  }
+
+  dismissOpenAIAgentsRunState(sessionId?: string): void {
+    if (!sessionId) return;
+    this.openAIAgentsRunStateService.deleteBySessionId(sessionId);
   }
 
   /**

@@ -37,11 +37,19 @@ class CommandManager {
         command = 'npx.cmd';
       }
 
+      const commandBasename = path.basename(command).toLowerCase();
+      const commandExt = path.extname(commandBasename);
+      const shouldRunDirectly =
+        commandExt === '.exe' ||
+        ['python', 'python.exe', 'pythonw', 'pythonw.exe', 'py', 'py.exe', 'where', 'where.exe'].includes(commandBasename);
+
       // 2. 对于 .cmd 命令，使用 CMD (shell: true) 而非 PowerShell
       // 因为 .cmd 本质是批处理，用 cmd.exe 运行是最原生、最稳的
       // 同时也避开了 PowerShell 执行策略 (ExecutionPolicy) 的干扰
       if (command.endsWith('.cmd') || command.endsWith('.bat')) {
         shell = true;
+      } else if (shouldRunDirectly) {
+        shell = false;
       }
     }
 

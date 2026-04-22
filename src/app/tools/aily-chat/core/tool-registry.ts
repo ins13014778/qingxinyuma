@@ -51,7 +51,7 @@ class ToolRegistryImpl {
    */
   getToolsForAgent(agentName: string): IAilyTool[] {
     return [...this.tools.values()].filter(
-      t => t.schema.agents.includes(agentName)
+      t => Array.isArray(t.schema?.agents) && t.schema.agents.includes(agentName)
     );
   }
 

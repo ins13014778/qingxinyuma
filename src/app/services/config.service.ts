@@ -1047,7 +1047,7 @@ interface AppConfig {
 
   /** 本机 Agent CLI 配置 */
   agentCli?: {
-    backend?: 'custom-model' | 'codex-cli' | 'claude-code';
+    backend?: 'custom-model' | 'codex-cli' | 'claude-code' | 'openai-agents-python';
     installSource?: 'domestic' | 'official' | 'custom';
     customRegistry?: string;
   };
