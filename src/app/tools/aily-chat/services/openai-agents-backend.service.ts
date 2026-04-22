@@ -54,6 +54,7 @@ export interface OpenAIAgentsTurnHandlers {
 })
 export class OpenAIAgentsBackendService {
   private activeStreamId: string | null = null;
+  private readonly longRunHeartbeatMs = 60000;
 
   async runTurn(
     request: OpenAIAgentsBackendRequest,
@@ -78,7 +79,8 @@ export class OpenAIAgentsBackendService {
     let removeListener: (() => void) | null = null;
     let settled = false;
     let eventChain = Promise.resolve();
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const startedAt = Date.now();
+    let heartbeatId: ReturnType<typeof setInterval> | null = null;
 
     this.writeDebugLog(streamId, [
       '=== RUN START ===',
@@ -101,9 +103,9 @@ export class OpenAIAgentsBackendService {
         if (settled) return;
         settled = true;
         removeListener?.();
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
+        if (heartbeatId) {
+          clearInterval(heartbeatId);
+          heartbeatId = null;
         }
         this.removeTempFile(requestFile);
         if (this.activeStreamId === streamId) {
@@ -111,6 +113,7 @@ export class OpenAIAgentsBackendService {
         }
         this.writeDebugLog(streamId, [
           '=== RUN END ===',
+          `durationMs=${Date.now() - startedAt}`,
           `error=${error?.message || ''}`,
           `finalOutput=${finalOutput.slice(0, 2000)}`,
           `stderr=${stderrBuffer.slice(-4000)}`,
@@ -281,11 +284,10 @@ export class OpenAIAgentsBackendService {
           finish(new Error(result?.error || 'OpenAI Agents Python 进程启动失败'));
           return;
         }
-        timeoutId = setTimeout(async () => {
-          this.writeDebugLog(streamId, ['timeout=runner exceeded 180000ms']);
-          await this.cancelCurrentRun();
-          finish(new Error('OpenAI Agents Python 执行超时，已自动中断'));
-        }, 180000);
+        heartbeatId = setInterval(() => {
+          const elapsedMs = Date.now() - startedAt;
+          this.writeDebugLog(streamId, [`heartbeat=runner still active elapsedMs=${elapsedMs}`]);
+        }, this.longRunHeartbeatMs);
       }).catch((error: any) => {
         finish(error instanceof Error ? error : new Error(String(error)));
       });

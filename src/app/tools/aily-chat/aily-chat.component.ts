@@ -177,6 +177,18 @@ export class AilyChatComponent implements OnDestroy {
     }
   }
 
+  get footerAgentBackendName(): string {
+    return this.currentAgentBackend === 'openai-agents-python'
+      ? 'Agent模式'
+      : this.currentAgentBackendName;
+  }
+
+  get footerModelName(): string {
+    return this.currentAgentBackend === 'openai-agents-python'
+      ? '小青'
+      : this.currentModelName;
+  }
+
   get currentModeTooltip(): string {
     return this.currentMode === 'agent'
       ? this.translate.instant('AILY_CHAT.MODE_AGENT_FULL')
