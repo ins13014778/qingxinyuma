@@ -180,6 +180,7 @@
             "DEPENDENCIES": "全局依赖",
             "AGENT_CLI": "Agent CLI管理",
             "MCP": "MCP",
+            "SKILLS": "Skills",
             "DEVMODE": "开发者模式"
         },
         "FIELDS": {

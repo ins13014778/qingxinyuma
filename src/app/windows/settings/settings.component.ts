@@ -17,6 +17,31 @@ import { NzModalService } from 'ng-zorro-antd/modal';
 import { ThemeService, ThemeMode } from '../../services/theme.service';
 import { AgentCliBackend, AgentCliInstallSource, AgentCliProvider, AgentCliService, AgentCliStatus } from '../../services/agent-cli.service';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { ProjectService } from '../../services/project.service';
+import { McpService } from '../../tools/aily-chat/services/mcp.service';
+import { SkillRegistry } from '../../tools/aily-chat/core/skill-registry';
+import type { IAilySkill } from '../../tools/aily-chat/core/skill-types';
+
+interface SettingsMcpServerItem {
+  name: string;
+  command: string;
+  argsText: string;
+  enabled: boolean;
+  toolCount: number;
+  status: 'idle' | 'connected' | 'error' | 'disabled';
+  error?: string;
+}
+
+interface SettingsSkillItem {
+  name: string;
+  description: string;
+  originLabel: string;
+  location: string;
+  tags: string[];
+  autoActivate: boolean;
+  canDelete: boolean;
+  folderPath: string;
+}
 
 @Component({
   selector: 'app-settings',
@@ -75,10 +100,14 @@ export class SettingsComponent {
       name: 'SETTINGS.SECTIONS.AGENT_CLI',
       icon: 'fa-light fa-terminal'
     },
-    // {
-    //   name: 'SETTINGS.SECTIONS.MCP',
-    //   icon: 'fa-light fa-webhook'
-    // },
+    {
+      name: 'SETTINGS.SECTIONS.MCP',
+      icon: 'fa-light fa-webhook'
+    },
+    {
+      name: 'SETTINGS.SECTIONS.SKILLS',
+      icon: 'fa-light fa-wand-magic-sparkles'
+    },
     {
       name: 'SETTINGS.SECTIONS.DEVMODE',
       icon: 'fa-light fa-gear-code'
@@ -175,6 +204,10 @@ export class SettingsComponent {
   appdata_path: string
 
   mcpServiceList = []
+  mcpServers: SettingsMcpServerItem[] = [];
+  mcpBusy = false;
+  discoveredSkills: SettingsSkillItem[] = [];
+  skillsBusy = false;
   agentCliStatuses: Record<AgentCliProvider, AgentCliStatus> = {
     'codex-cli': this.buildEmptyStatus('codex-cli'),
     'claude-code': this.buildEmptyStatus('claude-code'),
@@ -198,6 +231,8 @@ export class SettingsComponent {
     private themeService: ThemeService,
     private agentCliService: AgentCliService,
     private message: NzMessageService,
+    private projectService: ProjectService,
+    private mcpService: McpService,
   ) {
   }
 
@@ -205,6 +240,8 @@ export class SettingsComponent {
     await this.configService.init();
     this.agentCliService.ensureConfig();
     await this.refreshAgentCliStatuses();
+    await this.refreshMcpServers();
+    await this.refreshSkills();
   }
 
   async ngAfterViewInit() {
@@ -256,6 +293,199 @@ export class SettingsComponent {
   async refreshAgentCliStatuses() {
     const statuses = await this.agentCliService.detectAll();
     this.agentCliStatuses = statuses;
+  }
+
+  get currentProjectPath(): string {
+    return this.projectService.currentProjectPath || '';
+  }
+
+  get mcpConfigFilePath(): string {
+    return window['path'].join(window['path'].getAppDataPath(), 'mcp', 'mcp.json');
+  }
+
+  get globalSkillsDir(): string {
+    return window['path'].join(window['path'].getAppDataPath(), 'aily-skills');
+  }
+
+  get projectSkillsDir(): string {
+    return this.currentProjectPath
+      ? window['path'].join(this.currentProjectPath, '.aily', 'skills')
+      : '';
+  }
+
+  addMcpServer(): void {
+    this.mcpServers = [
+      ...this.mcpServers,
+      {
+        name: `server_${this.mcpServers.length + 1}`,
+        command: '',
+        argsText: '',
+        enabled: true,
+        toolCount: 0,
+        status: 'idle',
+      }
+    ];
+  }
+
+  removeMcpServer(index: number): void {
+    this.mcpServers = this.mcpServers.filter((_, i) => i !== index);
+  }
+
+  async refreshMcpServers(): Promise<void> {
+    this.mcpBusy = true;
+    try {
+      const config = this.loadMcpConfigFromDisk();
+      this.mcpServers = Object.entries(config.mcpServers || {}).map(([name, item]) => ({
+        name,
+        command: item.command || '',
+        argsText: Array.isArray(item.args) ? item.args.join('\n') : '',
+        enabled: item.enabled !== false,
+        toolCount: 0,
+        status: item.enabled === false ? 'disabled' : 'idle',
+      }));
+
+      for (const server of this.mcpServers) {
+        if (!server.enabled || !server.command) continue;
+        await this.detectMcpServer(server);
+      }
+    } finally {
+      this.mcpBusy = false;
+    }
+  }
+
+  async detectMcpServer(server: SettingsMcpServerItem): Promise<void> {
+    if (!server.command.trim()) {
+      server.status = 'error';
+      server.error = '请先填写命令';
+      return;
+    }
+
+    try {
+      server.error = '';
+      server.toolCount = 0;
+      const args = this.parseArgsText(server.argsText);
+      const connectResult: any = await window['mcp'].connect(server.name.trim(), server.command.trim(), args);
+      if (!connectResult?.success) {
+        server.status = 'error';
+        server.error = connectResult?.error || '连接失败';
+        return;
+      }
+
+      const toolsResult: any = await window['mcp'].getTools(server.name.trim());
+      if (!toolsResult?.success) {
+        server.status = 'error';
+        server.error = toolsResult?.error || '读取工具失败';
+        return;
+      }
+
+      server.status = 'connected';
+      server.toolCount = Array.isArray(toolsResult.tools) ? toolsResult.tools.length : 0;
+    } catch (error: any) {
+      server.status = 'error';
+      server.error = error?.message || String(error);
+    }
+  }
+
+  async saveMcpServers(): Promise<void> {
+    try {
+      const payload: any = { mcpServers: {} };
+      for (const server of this.mcpServers) {
+        const name = server.name.trim();
+        if (!name) continue;
+        payload.mcpServers[name] = {
+          command: server.command.trim(),
+          args: this.parseArgsText(server.argsText),
+          enabled: !!server.enabled,
+        };
+      }
+
+      const dir = window['path'].dirname(this.mcpConfigFilePath);
+      this.ensureDir(dir);
+      window['fs'].writeFileSync(this.mcpConfigFilePath, JSON.stringify(payload, null, 2));
+
+      this.mcpService.reset();
+      await this.refreshMcpServers();
+      this.message.success('MCP 配置已保存');
+    } catch (error: any) {
+      this.message.error(error?.message || '保存 MCP 配置失败');
+    }
+  }
+
+  async refreshSkills(): Promise<void> {
+    this.skillsBusy = true;
+    try {
+      await SkillRegistry.initialize(this.currentProjectPath || undefined);
+      this.discoveredSkills = SkillRegistry.getAll().map(skill => this.toSettingsSkillItem(skill));
+    } finally {
+      this.skillsBusy = false;
+    }
+  }
+
+  async importSkill(scope: 'global' | 'project', mode: 'folder' | 'file'): Promise<void> {
+    if (scope === 'project' && !this.currentProjectPath) {
+      this.message.warning('当前没有打开项目，无法导入到项目技能目录');
+      return;
+    }
+
+    const result = await window['dialog'].selectFiles({
+      title: mode === 'folder' ? '选择 Skill 文件夹' : '选择 SKILL.md 文件',
+      properties: mode === 'folder' ? ['openDirectory'] : ['openFile'],
+      filters: mode === 'file' ? [{ name: 'Skill', extensions: ['md'] }] : undefined,
+    });
+
+    if (result?.canceled || !result?.filePaths?.length) return;
+
+    try {
+      const sourcePath = result.filePaths[0];
+      const targetRoot = scope === 'global' ? this.globalSkillsDir : this.projectSkillsDir;
+      this.ensureDir(targetRoot);
+
+      if (mode === 'folder') {
+        const skillMdPath = window['path'].join(sourcePath, 'SKILL.md');
+        if (!window['fs'].existsSync(skillMdPath)) {
+          this.message.error('所选文件夹内未找到 SKILL.md');
+          return;
+        }
+        const folderName = window['path'].basename(sourcePath);
+        const targetDir = window['path'].join(targetRoot, folderName);
+        this.replaceDirectory(targetDir);
+        window['fs'].copySync(sourcePath, targetDir);
+      } else {
+        const targetName = window['path'].basename(sourcePath, '.md') || `skill_${Date.now()}`;
+        const targetDir = window['path'].join(targetRoot, targetName);
+        this.replaceDirectory(targetDir);
+        this.ensureDir(targetDir);
+        window['fs'].writeFileSync(
+          window['path'].join(targetDir, 'SKILL.md'),
+          window['fs'].readFileSync(sourcePath, 'utf8')
+        );
+      }
+
+      await this.refreshSkills();
+      this.message.success('Skill 导入成功');
+    } catch (error: any) {
+      this.message.error(error?.message || '导入 Skill 失败');
+    }
+  }
+
+  async removeSkill(skill: SettingsSkillItem): Promise<void> {
+    if (!skill.canDelete) {
+      this.message.warning('内置 Skill 不支持删除');
+      return;
+    }
+
+    try {
+      this.replaceDirectory(skill.folderPath, true);
+      await this.refreshSkills();
+      this.message.success(`已删除 Skill: ${skill.name}`);
+    } catch (error: any) {
+      this.message.error(error?.message || '删除 Skill 失败');
+    }
+  }
+
+  openPath(path: string): void {
+    if (!path) return;
+    window['other'].openByExplorer(path);
   }
 
   getAgentCliLabel(provider: AgentCliProvider): string {
@@ -426,6 +656,64 @@ export class SettingsComponent {
 
   onDevModeChange() {
     // this.configData.devmode = this.configData.devmode;
+  }
+
+  private parseArgsText(argsText: string): string[] {
+    return (argsText || '')
+      .split(/\r?\n/)
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  private loadMcpConfigFromDisk(): { mcpServers: Record<string, { command: string; args: string[]; enabled: boolean }> } {
+    try {
+      if (!window['fs'].existsSync(this.mcpConfigFilePath)) {
+        return { mcpServers: {} };
+      }
+      const raw = window['fs'].readFileSync(this.mcpConfigFilePath, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (!parsed?.mcpServers || typeof parsed.mcpServers !== 'object') {
+        return { mcpServers: {} };
+      }
+      return parsed;
+    } catch {
+      return { mcpServers: {} };
+    }
+  }
+
+  private toSettingsSkillItem(skill: IAilySkill): SettingsSkillItem {
+    const originLabel =
+      skill.origin.type === 'builtin' ? '内置' :
+      skill.origin.type === 'global' ? '全局' :
+      skill.origin.type === 'project' ? '项目' :
+      skill.origin.type === 'hub' ? 'Hub' :
+      'URL';
+
+    return {
+      name: skill.metadata.name,
+      description: skill.metadata.description || '',
+      originLabel,
+      location: skill.folderPath || skill.skillMdPath,
+      tags: skill.metadata.tags || [],
+      autoActivate: !!skill.metadata.autoActivate,
+      canDelete: skill.origin.type === 'global' || skill.origin.type === 'project',
+      folderPath: skill.folderPath,
+    };
+  }
+
+  private ensureDir(path: string): void {
+    if (!window['fs'].existsSync(path)) {
+      window['fs'].mkdirSync(path);
+    }
+  }
+
+  private replaceDirectory(path: string, removeOnly: boolean = false): void {
+    if (window['fs'].existsSync(path)) {
+      window['fs'].rmSync(path, { recursive: true, force: true });
+    }
+    if (!removeOnly) {
+      this.ensureDir(path);
+    }
   }
 
   // 搜索框变化处理

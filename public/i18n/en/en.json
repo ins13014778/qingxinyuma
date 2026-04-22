@@ -179,7 +179,9 @@
             "COMPILATION": "Compilation",
             "REPOSITORY": "Service Region",
             "DEPENDENCIES": "Dependencies",
+            "AGENT_CLI": "Agent CLI",
             "MCP": "MCP",
+            "SKILLS": "Skills",
             "DEVMODE": "Developer Mode"
         },
         "FIELDS": {

@@ -242,26 +242,125 @@
               </div>
             </div>
           </div>
-          <!-- <div id="SETTINGS.SECTIONS.MCP" class="section">
+          <div id="SETTINGS.SECTIONS.MCP" class="section">
             <h2 class="section-title">MCP</h2>
             <div class="right-inner">
-              <div class="board-list sscroll bborder">
-                @if(mcpServiceList.length == 0) {
-                <div class="board-item">Coming soon</div>
-                }@else{
-                @for (mcpService of mcpServiceList; track $index) {
-                <div class="board-item">
-                  <div>{{ mcpService.name }}</div>
-                  <div class="version">&#64;{{ mcpService.version }}</div>
-                  <div class="btns">
+              <div class="item">
+                <div>MCP 配置文件:</div>
+                <div class="inline-row">
+                  <input nz-input [ngModel]="mcpConfigFilePath" [disabled]="true" />
+                  <button nz-button nzSize="small" (click)="openPath(mcpConfigFilePath)">打开目录</button>
+                  <button nz-button nzSize="small" (click)="refreshMcpServers()" [disabled]="mcpBusy">
+                    {{ mcpBusy ? '刷新中...' : '刷新' }}
+                  </button>
+                  <button nz-button nzSize="small" nzType="primary" (click)="saveMcpServers()" [disabled]="mcpBusy">
+                    保存 MCP
+                  </button>
+                </div>
+              </div>
+
+              <div class="inline-actions">
+                <button nz-button nzSize="small" (click)="addMcpServer()">新增 MCP</button>
+              </div>
+
+              <div class="settings-card-list">
+                @if(mcpServers.length === 0) {
+                <div class="settings-card empty-card">当前还没有配置 MCP 服务</div>
+                } @else {
+                @for(server of mcpServers; track server.name + '-' + $index) {
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">{{ server.name || '未命名 MCP' }}</div>
+                    <div class="settings-status"
+                      [class.ok]="server.status === 'connected'"
+                      [class.warn]="server.status === 'disabled'"
+                      [class.error]="server.status === 'error'">
+                      {{ server.status === 'connected' ? ('已连接 · ' + server.toolCount + ' tools') : server.status === 'disabled' ? '已禁用' : server.status === 'error' ? '异常' : '未检测' }}
+                    </div>
+                  </div>
+                  <div class="settings-grid">
+                    <label>
+                      <span>名称</span>
+                      <input nz-input [(ngModel)]="server.name" />
+                    </label>
+                    <label>
+                      <span>命令</span>
+                      <input nz-input [(ngModel)]="server.command" />
+                    </label>
+                  </div>
+                  <label class="block-field">
+                    <span>参数</span>
+                    <textarea nz-input rows="3" [(ngModel)]="server.argsText" placeholder="每行一个参数"></textarea>
+                  </label>
+                  <div class="inline-row">
+                    <label class="switch-line">
+                      <span>启用</span>
+                      <nz-switch [(ngModel)]="server.enabled"></nz-switch>
+                    </label>
+                    <button nz-button nzSize="small" (click)="detectMcpServer(server)" [disabled]="!server.enabled || mcpBusy">检测</button>
+                    <button nz-button nzSize="small" (click)="removeMcpServer($index)">删除</button>
+                  </div>
+                  @if(server.error) {
+                  <div class="settings-error">{{ server.error }}</div>
+                  }
+                </div>
+                }
+                }
+              </div>
+            </div>
+          </div>
+
+          <div id="SETTINGS.SECTIONS.SKILLS" class="section">
+            <h2 class="section-title">Skills</h2>
+            <div class="right-inner">
+              <div class="item">
+                <div>Skill 目录:</div>
+                <div class="path-list">
+                  <div class="path-row">
+                    <span>全局</span>
+                    <input nz-input [ngModel]="globalSkillsDir" [disabled]="true" />
+                    <button nz-button nzSize="small" (click)="openPath(globalSkillsDir)">打开</button>
+                  </div>
+                  <div class="path-row">
+                    <span>项目</span>
+                    <input nz-input [ngModel]="projectSkillsDir || '当前未打开项目'" [disabled]="true" />
+                    <button nz-button nzSize="small" (click)="openPath(projectSkillsDir)" [disabled]="!projectSkillsDir">打开</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="inline-actions">
+                <button nz-button nzSize="small" (click)="refreshSkills()" [disabled]="skillsBusy">{{ skillsBusy ? '刷新中...' : '刷新列表' }}</button>
+                <button nz-button nzSize="small" (click)="importSkill('global', 'folder')">导入文件夹到全局</button>
+                <button nz-button nzSize="small" (click)="importSkill('global', 'file')">导入 SKILL.md 到全局</button>
+                <button nz-button nzSize="small" (click)="importSkill('project', 'folder')" [disabled]="!currentProjectPath">导入文件夹到项目</button>
+                <button nz-button nzSize="small" (click)="importSkill('project', 'file')" [disabled]="!currentProjectPath">导入 SKILL.md 到项目</button>
+              </div>
+
+              <div class="settings-card-list">
+                @if(discoveredSkills.length === 0) {
+                <div class="settings-card empty-card">当前未发现任何 Skill</div>
+                } @else {
+                @for(skill of discoveredSkills; track skill.name + '-' + skill.location) {
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">{{ skill.name }}</div>
+                    <div class="settings-status" [class.ok]="true">{{ skill.originLabel }}</div>
+                  </div>
+                  <div class="settings-meta">{{ skill.description || '暂无描述' }}</div>
+                  <div class="settings-meta">位置: {{ skill.location }}</div>
+                  <div class="settings-meta">标签: {{ skill.tags.length > 0 ? skill.tags.join(', ') : '-' }}</div>
+                  <div class="inline-row">
+                    <span class="settings-meta">{{ skill.autoActivate ? '自动激活' : '手动加载' }}</span>
+                    <button nz-button nzSize="small" (click)="openPath(skill.folderPath)" [disabled]="!skill.folderPath">打开目录</button>
+                    <button nz-button nzSize="small" (click)="removeSkill(skill)" [disabled]="!skill.canDelete">删除</button>
                   </div>
                 </div>
                 }
                 }
-
               </div>
             </div>
-          </div> -->
+          </div>
           <!-- 开发者设置 -->
           <div id="SETTINGS.SECTIONS.DEVMODE" class="section">
             <h2 class="section-title">{{ 'SETTINGS.SECTIONS.DEVMODE' | translate }}</h2>
