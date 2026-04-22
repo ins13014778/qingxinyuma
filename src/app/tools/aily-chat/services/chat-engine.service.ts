@@ -567,6 +567,15 @@ export class ChatEngineService {
     let resultState = 'done';
     if (toolResult?.is_error) { resultState = 'error'; }
     else if (toolResult?.warning) { resultState = 'warn'; }
+
+    if (options?.skipApproval && displayMode === 'toolCall' && startText) {
+      const finalState =
+        resultState === 'error' ? ToolCallState.ERROR :
+        resultState === 'warn' ? ToolCallState.WARN :
+        ToolCallState.DONE;
+      this.msg.completeToolCall(toolCallId, toolName, finalState, resultText, 'mainAgent');
+    }
+
     return { toolResult, resultState, resultText };
   }
 

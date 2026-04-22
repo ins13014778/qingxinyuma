@@ -1,7 +1,7 @@
 {
   "name": "qingxinyuma",
   "productName": "青芯驭码",
-  "version": "0.9.46",
+  "version": "0.9.47",
   "author": "coloz",
   "description": "青芯驭码",
   "main": "electron/main.js",
