@@ -246,6 +246,85 @@
                 </div>
                 }
               </div>
+
+              <div class="settings-card-list">
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">高级Agent 系统提示词</div>
+                  </div>
+                  <label class="block-field">
+                    <span>用于 OpenAI Agents 主控编排器</span>
+                    <textarea nz-input rows="8" [(ngModel)]="advancedAgentPromptDraft"></textarea>
+                  </label>
+                  <div class="inline-row">
+                    <button nz-button nzSize="small" nzType="primary" (click)="savePromptSettings()">保存提示词</button>
+                    <button nz-button nzSize="small" (click)="resetAdvancedPrompt()">恢复默认</button>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">兼容稳定模式提示词</div>
+                  </div>
+                  <label class="block-field">
+                    <span>作为兼容稳定模式的上下文规则注入</span>
+                    <textarea nz-input rows="8" [(ngModel)]="compatibilityPromptDraft"></textarea>
+                  </label>
+                  <div class="inline-row">
+                    <button nz-button nzSize="small" nzType="primary" (click)="savePromptSettings()">保存提示词</button>
+                    <button nz-button nzSize="small" (click)="resetCompatibilityPrompt()">恢复默认</button>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">记忆注入设置</div>
+                  </div>
+                  <div class="inline-row">
+                    <label class="switch-line">
+                      <span>启用项目记忆注入</span>
+                      <nz-switch [(ngModel)]="enableProjectMemory"></nz-switch>
+                    </label>
+                    <label class="switch-line">
+                      <span>启用全局记忆注入</span>
+                      <nz-switch [(ngModel)]="enableGlobalMemory"></nz-switch>
+                    </label>
+                    <button nz-button nzSize="small" nzType="primary" (click)="savePromptSettings()">保存注入配置</button>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">全局记忆</div>
+                  </div>
+                  <div class="settings-meta">文件: {{ globalMemoryFilePath }}</div>
+                  <label class="block-field">
+                    <span>跨项目长期记忆</span>
+                    <textarea nz-input rows="8" [(ngModel)]="globalMemoryDraft"></textarea>
+                  </label>
+                  <div class="inline-row">
+                    <button nz-button nzSize="small" nzType="primary" (click)="saveMemory('global')">保存全局记忆</button>
+                    <button nz-button nzSize="small" (click)="clearMemory('global')">清空</button>
+                    <button nz-button nzSize="small" (click)="openPath(globalMemoryFilePath)">打开目录</button>
+                  </div>
+                </div>
+
+                <div class="settings-card">
+                  <div class="settings-card-head">
+                    <div class="settings-card-title">项目记忆</div>
+                  </div>
+                  <div class="settings-meta">文件: {{ projectMemoryFilePath || '当前未打开项目' }}</div>
+                  <label class="block-field">
+                    <span>当前项目的长期记忆</span>
+                    <textarea nz-input rows="8" [(ngModel)]="projectMemoryDraft" [disabled]="!projectMemoryFilePath"></textarea>
+                  </label>
+                  <div class="inline-row">
+                    <button nz-button nzSize="small" nzType="primary" (click)="saveMemory('project')" [disabled]="!projectMemoryFilePath">保存项目记忆</button>
+                    <button nz-button nzSize="small" (click)="clearMemory('project')" [disabled]="!projectMemoryFilePath">清空</button>
+                    <button nz-button nzSize="small" (click)="openPath(projectMemoryFilePath)" [disabled]="!projectMemoryFilePath">打开目录</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
           <div id="SETTINGS.SECTIONS.MCP" class="section">

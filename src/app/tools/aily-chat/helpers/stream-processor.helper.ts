@@ -135,7 +135,17 @@ export class StreamProcessorHelper {
       const pipeline = new PromptPipeline();
       pipeline.registerAll([
         new ContextInjectionProvider(
-          (agentName: string) => this._getAgentExcludedTools(agentName)
+          (agentName: string) => this._getAgentExcludedTools(agentName),
+          () => this.engine.selectedBackend === 'custom-model'
+            ? this.engine.ailyChatConfigService.compatibilityModeSystemPrompt
+            : '',
+          () => {
+            const settings = this.engine.ailyChatConfigService.memorySettings;
+            return {
+              includeProject: settings.enableProjectMemory,
+              includeGlobal: settings.enableGlobalMemory,
+            };
+          }
         ),
         new ConversationHistoryProvider(),
         new ToolContinuationProvider(),

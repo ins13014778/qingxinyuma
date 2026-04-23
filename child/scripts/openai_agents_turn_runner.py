@@ -679,7 +679,7 @@ async def run_turn(request: dict) -> str:
 
         main_agent = Agent(
             name="AilyOpenAIAgentsMain",
-            instructions=MAIN_AGENT_INSTRUCTIONS,
+            instructions=request.get("mainAgentInstructions") or MAIN_AGENT_INSTRUCTIONS,
             model=model,
             tools=[
                 *[create_bridge_tool(tool) for tool in coordinator_tools],

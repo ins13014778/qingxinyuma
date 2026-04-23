@@ -21,6 +21,7 @@ import { ProjectService } from '../../services/project.service';
 import { McpService } from '../../tools/aily-chat/services/mcp.service';
 import { SkillRegistry } from '../../tools/aily-chat/core/skill-registry';
 import type { IAilySkill } from '../../tools/aily-chat/core/skill-types';
+import { AilyChatConfigService } from '../../tools/aily-chat/services/aily-chat-config.service';
 
 interface SettingsMcpServerItem {
   name: string;
@@ -208,6 +209,12 @@ export class SettingsComponent {
   mcpBusy = false;
   discoveredSkills: SettingsSkillItem[] = [];
   skillsBusy = false;
+  advancedAgentPromptDraft = '';
+  compatibilityPromptDraft = '';
+  globalMemoryDraft = '';
+  projectMemoryDraft = '';
+  enableProjectMemory = true;
+  enableGlobalMemory = true;
   agentCliStatuses: Record<AgentCliProvider, AgentCliStatus> = {
     'codex-cli': this.buildEmptyStatus('codex-cli'),
     'claude-code': this.buildEmptyStatus('claude-code'),
@@ -233,6 +240,7 @@ export class SettingsComponent {
     private message: NzMessageService,
     private projectService: ProjectService,
     private mcpService: McpService,
+    private ailyChatConfigService: AilyChatConfigService,
   ) {
   }
 
@@ -242,6 +250,8 @@ export class SettingsComponent {
     await this.refreshAgentCliStatuses();
     await this.refreshMcpServers();
     await this.refreshSkills();
+    this.loadPromptSettings();
+    this.loadMemorySettings();
   }
 
   async ngAfterViewInit() {
@@ -314,6 +324,16 @@ export class SettingsComponent {
   get projectSkillsDir(): string {
     return this.currentProjectPath
       ? window['path'].join(this.currentProjectPath, '.aily', 'skills')
+      : '';
+  }
+
+  get globalMemoryFilePath(): string {
+    return window['path'].join(window['path'].getAppDataPath(), 'aily-memory.md');
+  }
+
+  get projectMemoryFilePath(): string {
+    return this.currentProjectPath
+      ? window['path'].join(this.currentProjectPath, 'aily.md')
       : '';
   }
 
@@ -492,6 +512,69 @@ export class SettingsComponent {
     window['other'].openByExplorer(path);
   }
 
+  loadPromptSettings(): void {
+    this.advancedAgentPromptDraft = this.ailyChatConfigService.advancedAgentSystemPrompt;
+    this.compatibilityPromptDraft = this.ailyChatConfigService.compatibilityModeSystemPrompt;
+    const memorySettings = this.ailyChatConfigService.memorySettings;
+    this.enableProjectMemory = memorySettings.enableProjectMemory;
+    this.enableGlobalMemory = memorySettings.enableGlobalMemory;
+  }
+
+  savePromptSettings(): void {
+    this.ailyChatConfigService.advancedAgentSystemPrompt = this.advancedAgentPromptDraft.trim();
+    this.ailyChatConfigService.compatibilityModeSystemPrompt = this.compatibilityPromptDraft.trim();
+    this.ailyChatConfigService.memorySettings = {
+      enableProjectMemory: this.enableProjectMemory,
+      enableGlobalMemory: this.enableGlobalMemory,
+    };
+    if (this.ailyChatConfigService.save()) {
+      this.message.success('提示词与记忆注入配置已保存');
+    } else {
+      this.message.error('保存提示词配置失败');
+    }
+  }
+
+  resetAdvancedPrompt(): void {
+    this.ailyChatConfigService.resetAdvancedAgentSystemPrompt();
+    this.advancedAgentPromptDraft = this.ailyChatConfigService.advancedAgentSystemPrompt;
+  }
+
+  resetCompatibilityPrompt(): void {
+    this.ailyChatConfigService.resetCompatibilityModeSystemPrompt();
+    this.compatibilityPromptDraft = this.ailyChatConfigService.compatibilityModeSystemPrompt;
+  }
+
+  loadMemorySettings(): void {
+    this.globalMemoryDraft = this.readTextFileSafe(this.globalMemoryFilePath);
+    this.projectMemoryDraft = this.projectMemoryFilePath ? this.readTextFileSafe(this.projectMemoryFilePath) : '';
+  }
+
+  saveMemory(scope: 'global' | 'project'): void {
+    const filePath = scope === 'global' ? this.globalMemoryFilePath : this.projectMemoryFilePath;
+    if (!filePath) {
+      this.message.warning('当前没有打开项目，无法保存项目记忆');
+      return;
+    }
+
+    try {
+      const content = scope === 'global' ? this.globalMemoryDraft : this.projectMemoryDraft;
+      this.ensureDir(window['path'].dirname(filePath));
+      window['fs'].writeFileSync(filePath, content || '', 'utf8');
+      this.message.success(scope === 'global' ? '全局记忆已保存' : '项目记忆已保存');
+    } catch (error: any) {
+      this.message.error(error?.message || '保存记忆失败');
+    }
+  }
+
+  clearMemory(scope: 'global' | 'project'): void {
+    if (scope === 'global') {
+      this.globalMemoryDraft = '';
+    } else {
+      this.projectMemoryDraft = '';
+    }
+    this.saveMemory(scope);
+  }
+
   getAgentCliLabel(provider: AgentCliProvider): string {
     if (provider === 'openai-agents-python') {
       return 'OpenAI Agents（内置）';
@@ -634,6 +717,13 @@ export class SettingsComponent {
 
   apply() {
     // 保存到config.json，如有需要立即加载的，再加载
+    this.ailyChatConfigService.advancedAgentSystemPrompt = this.advancedAgentPromptDraft.trim();
+    this.ailyChatConfigService.compatibilityModeSystemPrompt = this.compatibilityPromptDraft.trim();
+    this.ailyChatConfigService.memorySettings = {
+      enableProjectMemory: this.enableProjectMemory,
+      enableGlobalMemory: this.enableGlobalMemory,
+    };
+    this.ailyChatConfigService.save();
     this.configService.save();
     window['ipcRenderer'].send('setting-changed', { action: 'devmode-changed', data: this.configData.devmode });
     // 保存完毕后关闭窗口
@@ -727,6 +817,15 @@ export class SettingsComponent {
     }
     if (!removeOnly) {
       this.ensureDir(path);
+    }
+  }
+
+  private readTextFileSafe(filePath: string): string {
+    try {
+      if (!filePath || !window['fs'].existsSync(filePath)) return '';
+      return window['fs'].readFileSync(filePath, 'utf8') || '';
+    } catch {
+      return '';
     }
   }
 

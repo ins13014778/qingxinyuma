@@ -175,6 +175,11 @@ export class ChatEngineService {
 
   get currentModelName() { return this.chatService.currentModel?.name; }
 
+  get selectedBackend(): AgentCliBackend {
+    this.agentCliService.ensureConfig();
+    return this.configService.data.agentCli?.backend || 'custom-model';
+  }
+
   get isWaiting() { return this._isWaiting; }
   set isWaiting(value: boolean) {
     this._isWaiting = value;
@@ -795,10 +800,7 @@ Do not create non-existent boards and libraries.
     this.sendMessageWithRetry(this.sessionId, llmText, sender, clear, 3);
   }
 
-  private getSelectedBackend(): AgentCliBackend {
-    this.agentCliService.ensureConfig();
-    return this.configService.data.agentCli?.backend || 'custom-model';
-  }
+  private getSelectedBackend(): AgentCliBackend { return this.selectedBackend; }
 
   private async sendToLocalCli(backend: AgentCliProvider, prompt: string): Promise<void> {
     const status = await this.agentCliService.detectProvider(backend);
@@ -906,6 +908,7 @@ Do not create non-existent boards and libraries.
           sessionId: this.sessionId,
           sessionDbPath,
           runStatePath: this.getOpenAIAgentsRunStatePath(),
+          mainAgentInstructions: this.ailyChatConfigService.advancedAgentSystemPrompt,
           mcpConfigPath,
           builtInAgents,
           mainTools: toolSets.mainTools,

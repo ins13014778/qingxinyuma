@@ -78,7 +78,9 @@ export class ContextInjectionProvider implements PromptElementProvider {
    * @param getAgentExcludedTools 获取被禁用工具名称集合的回调
    */
   constructor(
-    private getAgentExcludedTools: (agentName: string) => Set<string>
+    private getAgentExcludedTools: (agentName: string) => Set<string>,
+    private getCompatibilityPrompt?: () => string,
+    private getMemoryOptions?: () => { includeProject?: boolean; includeGlobal?: boolean }
   ) {}
 
   build(context: PromptBuildContext): PromptElement | null {
@@ -88,6 +90,10 @@ export class ContextInjectionProvider implements PromptElementProvider {
     const parts: string[] = [];
 
     if (mode === 'agent') {
+      const compatibilityPrompt = this.getCompatibilityPrompt?.();
+      if (compatibilityPrompt) {
+        parts.push(`<compatibilitySystemPrompt>\n${compatibilityPrompt}\n</compatibilitySystemPrompt>`);
+      }
       const skillsContent = SkillRegistry.getActiveSkillsContent(messageSource);
       if (skillsContent) parts.push(skillsContent);
     } else {
@@ -103,7 +109,7 @@ export class ContextInjectionProvider implements PromptElementProvider {
     const skillsListing = SkillRegistry.getSkillsListing(messageSource);
     if (skillsListing) parts.push(skillsListing);
 
-    const memorySnippet = getMemoryPromptSnippet();
+    const memorySnippet = getMemoryPromptSnippet(this.getMemoryOptions?.());
     if (memorySnippet) parts.push(memorySnippet);
 
     if (parts.length === 0) return null;

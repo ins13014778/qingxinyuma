@@ -163,12 +163,14 @@ export async function memoryTool(args: MemoryToolArgs): Promise<ToolUseResult> {
  * 获取记忆内容（供系统提示注入使用，非工具调用）
  * 自动读取项目/全局记忆并合并为提示词片段
  */
-export function getMemoryPromptSnippet(): string {
+export function getMemoryPromptSnippet(options?: { includeProject?: boolean; includeGlobal?: boolean }): string {
   const fs = AilyHost.get().fs;
   const parts: string[] = [];
+  const includeProject = options?.includeProject ?? true;
+  const includeGlobal = options?.includeGlobal ?? true;
 
   // 项目记忆
-  const projectPath = getMemoryFilePath('project');
+  const projectPath = includeProject ? getMemoryFilePath('project') : null;
   if (projectPath && fs.existsSync(projectPath)) {
     try {
       const data = fs.readFileSync(projectPath, 'utf-8').trim();
@@ -181,7 +183,7 @@ export function getMemoryPromptSnippet(): string {
   }
 
   // 全局记忆
-  const globalPath = getMemoryFilePath('global');
+  const globalPath = includeGlobal ? getMemoryFilePath('global') : null;
   if (globalPath && fs.existsSync(globalPath)) {
     try {
       const data = fs.readFileSync(globalPath, 'utf-8').trim();

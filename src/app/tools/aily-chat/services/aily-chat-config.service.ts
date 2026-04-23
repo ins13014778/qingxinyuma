@@ -92,6 +92,15 @@ export interface AilyChatConfig {
     autoSaveEdits?: boolean;
     /** 聊天界面用户显示昵称 */
     userDisplayName?: string;
+    /** 高级Agent系统提示词 */
+    advancedAgentSystemPrompt?: string;
+    /** 兼容稳定模式系统提示词 */
+    compatibilityModeSystemPrompt?: string;
+    /** 记忆注入配置 */
+    memory?: {
+        enableProjectMemory?: boolean;
+        enableGlobalMemory?: boolean;
+    };
 }
 
 /**
@@ -121,7 +130,23 @@ const DEFAULT_CONFIG: AilyChatConfig = {
     compressionThresholdRatio: 0.5,
     summarizationThresholdRatio: 0.75,
     autoSaveEdits: true,
-    userDisplayName: 'me'
+    userDisplayName: 'me',
+    advancedAgentSystemPrompt: `You are the orchestration agent inside an Electron coding application.
+Prefer delegating work to the most appropriate specialist agent instead of doing all work yourself.
+Use direct tools only for lightweight coordination tasks like asking the user for clarification.
+Delegate only when it materially improves the answer, keep specialist usage focused, and stop exploring once you have enough evidence.
+Avoid repeated filesystem discovery or repeated diagnostics unless the user explicitly asks for deeper investigation.
+If you create a todo list or test plan, continue executing it in the same run instead of stopping after planning, unless the user explicitly asks for plan-only output.
+Keep answers concise and combine specialist outputs into one coherent response.`,
+    compatibilityModeSystemPrompt: `你是青芯驭码内置的兼容稳定模式 AI 助手。
+你需要优先完成用户明确要求的任务，尽量少空谈、多执行。
+在修改项目、分析代码、调用工具时，先基于当前工程上下文做判断，再给出结果。
+如果已经列出计划或 Todo，请继续执行，而不是只停留在规划阶段。
+如果任务存在风险或缺少必要信息，再向用户提问澄清。`,
+    memory: {
+        enableProjectMemory: true,
+        enableGlobalMemory: true
+    }
 };
 
 /**
@@ -349,6 +374,44 @@ export class AilyChatConfigService {
 
     set userDisplayName(value: string) {
         this.config.userDisplayName = value.trim() || 'me';
+    }
+
+    get advancedAgentSystemPrompt(): string {
+        return this.config.advancedAgentSystemPrompt?.trim() || DEFAULT_CONFIG.advancedAgentSystemPrompt || '';
+    }
+
+    set advancedAgentSystemPrompt(value: string) {
+        this.config.advancedAgentSystemPrompt = value;
+    }
+
+    resetAdvancedAgentSystemPrompt(): void {
+        this.config.advancedAgentSystemPrompt = DEFAULT_CONFIG.advancedAgentSystemPrompt;
+    }
+
+    get compatibilityModeSystemPrompt(): string {
+        return this.config.compatibilityModeSystemPrompt?.trim() || DEFAULT_CONFIG.compatibilityModeSystemPrompt || '';
+    }
+
+    set compatibilityModeSystemPrompt(value: string) {
+        this.config.compatibilityModeSystemPrompt = value;
+    }
+
+    resetCompatibilityModeSystemPrompt(): void {
+        this.config.compatibilityModeSystemPrompt = DEFAULT_CONFIG.compatibilityModeSystemPrompt;
+    }
+
+    get memorySettings(): { enableProjectMemory: boolean; enableGlobalMemory: boolean } {
+        return {
+            enableProjectMemory: this.config.memory?.enableProjectMemory ?? true,
+            enableGlobalMemory: this.config.memory?.enableGlobalMemory ?? true
+        };
+    }
+
+    set memorySettings(value: { enableProjectMemory?: boolean; enableGlobalMemory?: boolean }) {
+        this.config.memory = {
+            enableProjectMemory: value.enableProjectMemory ?? true,
+            enableGlobalMemory: value.enableGlobalMemory ?? true
+        };
     }
 
     /**
