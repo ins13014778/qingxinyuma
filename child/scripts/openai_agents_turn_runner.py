@@ -58,7 +58,8 @@ SPECIALIST_AGENT_DEFS = [
             "repository cloning, architecture notes, and project-level diagnostics. "
             "Do not call get_errors unless the user explicitly asks for build or lint diagnostics. "
             "Avoid repeated diagnostics after one result is available. "
-            "You must stop after collecting 1-2 key project findings, and you have a hard cap of 2 tool calls in a handoff."
+            "Prefer finishing concrete project actions such as create_project, switch_board, and set_board_config before stopping. "
+            "Only stop early after 1-2 key findings when the task is analysis-only."
         ),
         "matcher": lambda name: name in {
             "create_project",
@@ -484,7 +485,7 @@ def classify_specialist_tools(main_tools: list[dict[str, Any]]) -> tuple[list[di
                 "instructions": specialist["instructions"],
                 "tools": tools,
                 "description": specialist["instructions"],
-                "max_tool_calls": SPECIALIST_FIRST_ROUND_MAX_TOOL_CALLS if specialist["name"] in {
+                "max_tool_calls": 4 if specialist["name"] == "ProjectSpecialist" else SPECIALIST_FIRST_ROUND_MAX_TOOL_CALLS if specialist["name"] in {
                     "ProjectSpecialist",
                     "FileSpecialist",
                     "TerminalSpecialist",
@@ -640,11 +641,20 @@ async def run_turn(request: dict) -> str:
 
         specialist_agents = []
         for agent_def in specialist_agent_defs:
+            specialist_per_tool_limits = {"get_errors": 1}
+            if agent_def["name"] == "ProjectSpecialist":
+                specialist_per_tool_limits.update({
+                    "ask_user": 2,
+                    "create_project": 2,
+                    "switch_board": 2,
+                    "set_board_config": 2,
+                    "build_project": 2,
+                })
             specialist_budget = ToolBudgetTracker(
                 name=agent_def["name"],
                 max_total_calls=agent_def.get("max_tool_calls", 3),
                 default_tool_limit=1,
-                per_tool_limits={"get_errors": 1},
+                per_tool_limits=specialist_per_tool_limits,
             )
             specialist_agents.append(
                 Agent(
