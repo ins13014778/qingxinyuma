@@ -1,0 +1,321 @@
+# 青芯驭码系统说明文档
+
+## 1. 系统概述
+
+青芯驭码（aily blockly）是一款基于 Electron + Angular 19 构建的桌面级图形化编程 IDE，面向嵌入式开发、硬件原型验证与 STEM 教学场景。它把积木编程（Blockly）、专业代码编辑（Monaco）、AI 助手、串口调试、固件上传、端侧 AI 模型训练与部署全部融合在同一款软件中，做到中文原生、开箱即用、离线可用、可品牌化再分发。
+
+### 1.1 核心定位
+
+- **面向用户**：从小学到大学的编程/硬件课堂、创客与嵌入式工程师、教育机构与板卡厂商、TinyML/边缘 AI 学习者
+- **核心能力**：积木编程 + 代码编辑 + 串口调试 + 固件上传 + AI 助手 + 模型训练/部署
+- **支持硬件**：Arduino 家族、ESP32/ESP8266、STM32、nRF5 等
+- **支持平台**：Windows（主）、macOS、Linux
+
+### 1.2 技术架构
+
+青芯驭码采用 Electron 的双进程模型，结合 Angular 19 的现代前端架构，实现了高性能、跨平台的桌面应用。
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        应用层 (Angular 19)                   │
+│ ┌────────────┬────────────┬────────────┬────────────────────┐ │
+│ │  Blockly   │   Monaco   │   xterm    │   ng-zorro-antd    │ │
+│ │  11.2      │   0.52     │   5.5      │   19 (dark)        │ │
+│ └────────────┴────────────┴────────────┴────────────────────┘ │
+│ ┌────────────┬────────────┬────────────┬────────────────────┐ │
+│ │  Mermaid   │  Konva     │ Lightweight│  Shiki + Marked    │ │
+│ │  (流程图)  │  (画布)    │ Charts     │  (Markdown 渲染)   │ │
+│ └────────────┴────────────┴────────────┴────────────────────┘ │
+├──────────────────────────────────────────────────────────────┤
+│                    预加载桥 (contextBridge)                  │
+│         window.electronAPI ← preload.js                     │
+├──────────────────────────────────────────────────────────────┤
+│                       主进程 (Electron 35)                   │
+│ ┌─────────┬─────────┬─────────┬─────────┬──────────────────┐  │
+│ │ serial  │ node-pty│  npm    │ probe-rs│ electron-builder │  │
+│ │ (串口)  │ (PTY)   │ (子进程)│ (烧录)  │ (打包)           │  │
+│ └─────────┴─────────┴─────────┴─────────┴──────────────────┘  │
+│ ┌─────────┬─────────┬─────────┬─────────────────────────────┐ │
+│ │ MCP SDK │esptool-js│ripgrep │ @orama/orama (向量/全文检索)│ │
+│ └─────────┴─────────┴─────────┴─────────────────────────────┘ │
+├──────────────────────────────────────────────────────────────┤
+│                   操作系统资源 (child/)                      │
+│     Node 22 · 7zip · aily-builder · clangd · ripgrep         │
+└──────────────────────────────────────────────────────────────┘
+```
+
+## 2. 系统架构
+
+### 2.1 双进程模型
+
+青芯驭码采用 Electron 的经典双进程架构：
+
+1. **主进程 (Main Process)**：负责应用生命周期管理、窗口创建、系统资源访问（串口、文件系统等）
+2. **渲染进程 (Renderer Process)**：负责 UI 渲染，基于 Angular 19 构建
+3. **预加载脚本 (Preload)**：作为安全的桥接层，暴露受控的 API 给渲染进程
+
+### 2.2 目录结构
+
+```
+aily-blockly-main/
+├── src/                          # Angular 渲染端源码
+│   ├── app/                      # 应用代码
+│   │   ├── main-window/          # 主窗口壳
+│   │   ├── pages/                # 引导页 / 示例广场 / 新建项目
+│   │   ├── editors/              # Blockly / Monaco / Graph 编辑器
+│   │   ├── windows/              # 独立子窗口
+│   │   ├── tools/                # AI 助手 / 串口监视器 / 模拟器 / 商店
+│   │   ├── components/           # 通用 UI 组件
+│   │   ├── services/             # 全局服务
+│   │   ├── configs/              # 静态配置
+│   │   ├── interceptors/         # HTTP 拦截器
+│   │   ├── workers/              # Web Worker
+│   │   └── types/                # 类型声明
+├── electron/                     # Electron 主进程源码
+│   ├── main.js                   # 应用生命周期 / IPC 路由
+│   ├── preload.js                # contextBridge → window.electronAPI
+│   ├── serial.js                 # 串口
+│   ├── terminal.js               # node-pty 终端
+│   ├── npm.js                    # 受控 npm 子进程
+│   ├── mcp.js                    # Model Context Protocol
+│   ├── probe-rs.js               # STM32/nRF5 烧录
+│   └── upload.js                 # 固件上传
+├── child/                        # 随安装包分发的外部运行时
+│   ├── windows/                  # Windows 专属工具
+│   ├── macos/                    # macOS 专属工具
+│   └── scripts/                  # 通用脚本
+├── public/                       # 静态资源
+│   ├── icon.ico                  # 系统图标
+│   ├── imgs/                     # 应用内图片
+│   └── i18n/                     # 多语言文件
+└── docs/                         # 项目文档
+```
+
+### 2.3 核心服务
+
+| 服务类型 | 服务名称 | 职责 |
+|---------|---------|------|
+| 原生能力桥接 | electron.service | 通用 IPC 调用统一入口 |
+| 原生能力桥接 | serial.service | 串口开闭、收发、节流 |
+| 原生能力桥接 | cmd.service | 跨平台命令执行 |
+| 原生能力桥接 | builder.service | 调用 aily-builder 编译 |
+| 原生能力桥接 | uploader.service | 固件上传 |
+| 业务领域 | project.service | 项目生命周期管理 |
+| 业务领域 | workflow.service | 编译→上传→监视器的流水线 |
+| 业务领域 | background-agent.service | 后台 Agent 任务调度 |
+| 平台与 UI | config.service | 用户配置读写 |
+| 平台与 UI | theme.service | 深/浅主题切换 |
+| 平台与 UI | translation.service | 多语言支持 |
+| 平台与 UI | auth.service | 登录、OAuth、Token 管理 |
+
+## 3. 核心功能
+
+### 3.1 积木 + 代码 双模同屏
+
+- **Blockly 11** 拖拽编程，新手友好
+- **Monaco 0.52**（VSCode 同款）专业代码编辑
+- **一键切换**，代码自动从积木生成
+- 支持学习阶段的**平滑过渡**
+
+### 3.2 AI 原生三层能力
+
+```
+┌──────────────────────────────────────────────────┐
+│  L1 · 代码补全（Monaco 编辑器内嵌）             │
+│     · 本地符号扫描（Arduino SDK / 库 .h/.cpp）  │
+│     · 云端 LLM 上下文感知                       │
+│     · 30 秒缓存，Tab 键接受                     │
+├──────────────────────────────────────────────────┤
+│  L2 · AI 对话助手（aily-chat）                  │
+│     · Markdown / Mermaid / 代码块高亮           │
+│     · tiktoken 前端计数，成本可见               │
+│     · 项目上下文自动注入                        │
+├──────────────────────────────────────────────────┤
+│  L3 · MCP Agent（@modelcontextprotocol/sdk）    │
+│     · AI 可调用：读文件 / 编译 / 烧录           │
+│     · 多步自主执行                              │
+└──────────────────────────────────────────────────┘
+```
+
+### 3.3 全链路工具链
+
+- **编程**：Blockly 积木或 Monaco 代码编辑
+- **编译**：通过 aily-builder 快速编译
+- **上传**：支持多种硬件的固件上传
+- **监视**：串口监视器实时查看设备输出
+- **调试**：集成调试工具
+
+### 3.4 广泛硬件支持
+
+| MCU 家族 | 代表型号 | 烧录方式 | 备注 |
+|---------|---------|---------|------|
+| **Arduino AVR** | Uno, Nano, Mega | avrdude (via aily-builder) | 原生 |
+| **ESP32 / ESP8266** | ESP32-S3, ESP32-C3, ESP8266 | `esptool-js`（纯 JS） | **无需 Python** |
+| **STM32** | F1 / F4 / H7 系列 | probe-rs + JTAG/SWD | 支持 J-Link / ST-LINK |
+| **nRF5** | nRF52 系列 | probe-rs | 蓝牙/BLE 场景 |
+
+### 3.5 端侧 AI 训练与部署
+
+- 集成 **SSCMA 生态**
+- 图像分类 / 目标检测 一体化向导
+- **Web Worker 本地训练**，不阻塞 UI
+- **采集 → 训练 → 量化 → 部署**，一条龙完成
+
+### 3.6 中文原生 · 离线可用
+
+- UI、文档、AI 对话、示例全中文优先
+- 编译、烧录、本地补全**全部可断网使用**
+- 国内 npm 镜像可一键切换
+- 适配国内教育合规与网络环境
+
+## 4. 系统使用指南
+
+### 4.1 环境要求
+
+- **Windows 10/11** 为主（macOS / Linux 亦可开发）
+- **Node.js 22.x** · **npm 10+** · **Git**
+- Windows 打包需启用 **开发者模式**
+
+### 4.2 快速开始
+
+```bash
+# 1. 克隆仓库
+git clone https://github.com/ins13014778/qingxinyuma.git
+cd qingxinyuma
+
+# 2. 两层依赖安装（root + electron）
+npm install
+cd electron && npm install && cd ..
+
+# 3. 启动开发环境（Angular + Electron 同时起）
+npm run electron
+```
+
+启动后会自动打开青芯驭码桌面窗口。
+
+### 4.3 生成安装包
+
+```bash
+# 生成 Windows 安装包
+npm run build
+
+# 生成 macOS 安装包
+npm run build:mac
+
+# 生成 macOS 通用二进制安装包
+npm run build:mac:universal
+```
+
+成功后在 `dist/aily-blockly/` 看到安装包。
+
+### 4.4 应用场景
+
+| 场景 | 适用人群 | 典型使用 |
+|------|---------|----------|
+| 🎓 **K12 STEM 教育** | 小/初/高中学生、教师 | 积木编程 → Arduino / ESP32 传感器项目 |
+| 🏫 **高校嵌入式教学** | 大学生、高职生 | 代码模式 + STM32 / ESP32 课程实训 |
+| 🛠️ **创客空间** | 培训机构、创客爱好者 | 全流程工具 + 品牌化 IDE 分发 |
+| 🚀 **快速原型** | 创业者、硬件工程师 | 15 分钟从 0 到 Demo |
+| 🧠 **TinyML 教学** | 研究生、ML 学习者 | 端侧 AI 训练部署一体化 |
+| 🏭 **职业培训** | 职校、技校 | 多板卡支持 + 一套教材多层次覆盖 |
+| 🔧 **OEM 定制** | 板卡厂商、教育公司 | Fork + 品牌化 → 自有 IDE |
+
+## 5. 系统配置与扩展
+
+### 5.1 AI 配置
+
+在 `src/app/configs/ai-config.ts` 中可配置：
+- **endpoint**：任何 OpenAI 兼容接口（OpenAI / Azure / 私有化 / 自建代理）
+- **model / temperature / max_tokens**：可调优参数
+- **apiKey**：通过 Electron `safeStorage` 加密存储
+
+### 5.2 新增板卡支持
+
+1. 在 `src/app/configs/` 新建 `yourboard.config.ts`（参考 `esp32.config.ts`）
+2. 把配置注入 `board.config.ts` 聚合表
+3. 如果有新烧录方式，在 `services/` 加一个 `xxx-uploader.service.ts`
+4. 在 aily-builder 侧新增编译配方（如果编译链不同）
+
+### 5.3 品牌化定制
+
+最小改动清单：
+- `package.json`：`productName`、`build.*.artifactName`、`build.nsis.shortcutName`
+- `electron/main.js`：`app.setName(...)` + `AppUserModelId`
+- `electron/window.js` + `build/installer.nsh`：旧进程名清理
+- `src/index.html`：`<title>`
+- `public/i18n/*/*.json`：`TITLE` 键
+- `public/icon.ico` + `public/imgs/logo*.webp`
+
+## 6. 系统维护与故障排查
+
+### 6.1 常见问题排查
+
+| 问题 | 原因 | 解决 |
+|------|------|------|
+| `Cannot find module 'electron-win-state'` | 只装了根依赖 | `cd electron && npm install` |
+| 打包慢 | 首次下载 Electron 二进制 | 配置 `.npmrc` 使用国内镜像 |
+| AI 助手 401 | 使用了旧安装包或旧会话 | 重装 + 新建会话 + 确认模型配置 |
+| 安装目录名不对 | 只改了 `productName` | 同时改 `name` 为英文 |
+| 启动 tcp:4200 超时 | 端口被占用 | 关闭其他 Angular 项目 |
+
+### 6.2 性能与稳定性关键点
+
+| 问题 | 解决方案 | 位置 |
+|------|---------|------|
+| V8 内存不足（大型项目） | `--max-old-space-size=4096` | `main.js`:12 |
+| GPU shader cache 持续增长 | `disable-gpu-shader-disk-cache` | `main.js`:13 |
+| HTTP cache 无限膨胀 | `disk-cache-size=100MB` | `main.js`:15 |
+| 串口事件过载 | 50ms 节流聚合 | `serial.js` |
+| Angular 变更检测抖动 | Zone 事件合并 | `app.config.ts` |
+| asar 内原生模块加载失败 | `asarUnpack` 解出 .node | `package.json` |
+| 多窗口重复加载 Monaco | 统一从 `/assets/vs` 加载，共享缓存 | `angular.json` |
+| AI 补全重复请求 | 30 秒本地缓存 | `code-intelligence-guide.md` |
+
+## 7. 安全基线
+
+1. **禁用 Node 集成**（在 BrowserWindow 配置中），仅通过 preload 暴露受控 API
+2. **contextIsolation: true** 强制（preload 与 renderer 隔离）
+3. **Token 存储**：`safeStorage`（Electron 原生加密存储），仅通过 `auth.service` 访问
+4. **HTTP 拦截器**：`authInterceptor` 统一注入 Token；`retryInterceptor` 处理 401 静默刷新
+5. **npm 源锁定**：`child/node/.npmrc` 指向私有源，防止安装任意包
+6. **文件关联沙箱**：`.abi` 文件由 `project.service` 校验后才加载，拒绝越权执行
+
+## 8. 发展路线
+
+```
+2024                 2025                 2026+
+ │                    │                    │
+ ▼                    ▼                    ▼
+[稳定期]           [智能期]              [生态期]
+v0.5 ~ 0.9        v0.9 ~ 1.x           v1.x ~ 2.x
+ │                   │                    │
+ ├─ 多硬件支持       ├─ AI 代码补全       ├─ 应用/模型商店
+ ├─ 多语言 i18n     ├─ MCP Agent         ├─ 云空间协作
+ ├─ 串口监视器      ├─ 端侧 AI 训练      ├─ 插件生态
+ └─ NSIS 打包       └─ SSCMA 集成        └─ Web 版本探索
+
+               ← 当前 v0.9.40
+```
+
+## 9. 技术特色一览
+
+- ✅ **标准 Angular Standalone**（无 NgModule，全部 `loadComponent`）
+- ✅ **Hash 路由**（兼容 Electron `file://` 加载）
+- ✅ **Zone 事件合并**（降低高频输入 CD 压力）
+- ✅ **contextBridge 严格隔离**（渲染端无 Node 权限）
+- ✅ **Web Worker 本地训练**（不阻塞 UI）
+- ✅ **asarUnpack 原生模块**（serialport、node-pty 正确加载）
+- ✅ **多实例 + OAuth 共享状态**（跨进程协调）
+- ✅ **自定义协议 + 文件关联**（`ailyblockly://` + `.abi`）
+- ✅ **自动更新 + 差分包**（electron-updater）
+- ✅ **ng-zorro-antd 双主题**（深色默认 + 浅色可切换）
+- ✅ **tiktoken 前端计数**（AI 对话成本可见）
+- ✅ **Mermaid / Shiki / Marked**（富文本渲染）
+
+## 10. 总结
+
+青芯驭码是一款功能强大、架构先进的桌面级图形化编程 IDE，它将积木编程、代码编辑、AI 助手、硬件烧录等功能无缝集成，为嵌入式开发、硬件原型验证与 STEM 教学提供了一站式解决方案。
+
+通过 Electron 和 Angular 的结合，青芯驭码实现了跨平台的桌面应用，同时保持了高性能和良好的用户体验。其模块化的架构设计使得系统易于扩展和定制，为教育机构和板卡厂商提供了品牌化的可能性。
+
+青芯驭码不仅是一个编程工具，更是连接代码与硬件、连接教育与实践的桥梁，为用户提供了从入门到专业的完整编程体验。
