@@ -451,25 +451,31 @@ def create_builtin_subagent_tool(agent_def: dict) -> FunctionTool:
 def classify_specialist_tools(main_tools: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     coordinator_tools: list[dict[str, Any]] = []
     specialist_tools: dict[str, list[dict[str, Any]]] = {item["key"]: [] for item in SPECIALIST_AGENT_DEFS}
+    shared_specialist_tools: list[dict[str, Any]] = []
 
     for tool in main_tools:
-      name = tool["name"]
-      if name in {"ask_user", "load_skill", "search_available_tools"}:
-          coordinator_tools.append(tool)
-          continue
+        name = tool["name"]
+        if name == "ask_user":
+            coordinator_tools.append(tool)
+            shared_specialist_tools.append(tool)
+            continue
 
-      matched = False
-      for specialist in SPECIALIST_AGENT_DEFS:
-          if specialist["matcher"](name):
-              specialist_tools[specialist["key"]].append(tool)
-              matched = True
-              break
-      if not matched:
-          coordinator_tools.append(tool)
+        if name in {"load_skill", "search_available_tools"}:
+            coordinator_tools.append(tool)
+            continue
+
+        matched = False
+        for specialist in SPECIALIST_AGENT_DEFS:
+            if specialist["matcher"](name):
+                specialist_tools[specialist["key"]].append(tool)
+                matched = True
+                break
+        if not matched:
+            coordinator_tools.append(tool)
 
     agents = []
     for specialist in SPECIALIST_AGENT_DEFS:
-        tools = specialist_tools[specialist["key"]]
+        tools = [*shared_specialist_tools, *specialist_tools[specialist["key"]]]
         if not tools:
             continue
         agents.append(
