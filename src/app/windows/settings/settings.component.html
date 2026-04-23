@@ -179,6 +179,7 @@
                 </div>
               </div>
 
+              @if(!isBuiltInOpenAIAgentsSelected) {
               <div class="item">
                 <div>安装源:</div>
                 <div class="agent-cli-sources">
@@ -191,8 +192,9 @@
                   }
                 </div>
               </div>
+              }
 
-              @if(agentCliConfig.installSource === 'custom') {
+              @if(!isBuiltInOpenAIAgentsSelected && agentCliConfig.installSource === 'custom') {
               <div class="item">
                 <div>自定义 registry:</div>
                 <input nz-input [(ngModel)]="agentCliConfig.customRegistry" placeholder="https://registry.example.com"
@@ -200,10 +202,12 @@
               </div>
               }
 
+              @if(!isBuiltInOpenAIAgentsSelected) {
               <div class="item">
                 <div>当前安装源地址:</div>
                 <input nz-input [ngModel]="getAgentCliResolvedRegistry()" [disabled]="true" />
               </div>
+              }
 
               <div class="agent-cli-list">
                 @for(provider of agentCliProviders; track provider) {
@@ -211,7 +215,7 @@
                   <div class="agent-cli-card-head">
                     <div class="agent-cli-title">{{ getAgentCliLabel(provider) }}</div>
                     <div class="agent-cli-status" [class.ok]="agentCliStatuses[provider]?.installed">
-                      {{ agentCliStatuses[provider]?.installed ? '已安装' : '未安装' }}
+                      {{ getAgentCliStatusText(provider) }}
                     </div>
                   </div>
                   <div class="agent-cli-meta">命令: {{ agentCliStatuses[provider]?.commandName }}</div>
@@ -226,6 +230,7 @@
                     <button nz-button nzSize="small" (click)="detectAgentCli(provider)" [disabled]="!!agentCliBusy[provider]">
                       {{ agentCliBusy[provider] === 'detecting' ? '检测中...' : '重新检测' }}
                     </button>
+                    @if(provider !== 'openai-agents-python') {
                     <button nz-button nzSize="small" nzType="primary"
                       (click)="installAgentCli(provider)"
                       [disabled]="!!agentCliBusy[provider] || agentCliStatuses[provider]?.installed">
@@ -236,6 +241,7 @@
                       [disabled]="!!agentCliBusy[provider] || !agentCliStatuses[provider]?.installed">
                       {{ agentCliBusy[provider] === 'upgrading' ? '升级中...' : '升级' }}
                     </button>
+                    }
                   </div>
                 </div>
                 }

@@ -41,6 +41,7 @@ MAIN_AGENT_INSTRUCTIONS = (
     "Use direct tools only for lightweight coordination tasks like asking the user for clarification. "
     "Delegate only when it materially improves the answer, keep specialist usage focused, and stop exploring once you have enough evidence. "
     "Avoid repeated filesystem discovery or repeated diagnostics unless the user explicitly asks for deeper investigation. "
+    "If you create a todo list or test plan, continue executing it in the same run instead of stopping after planning, unless the user explicitly asks for plan-only output. "
     "Keep answers concise and combine specialist outputs into one coherent response."
 )
 

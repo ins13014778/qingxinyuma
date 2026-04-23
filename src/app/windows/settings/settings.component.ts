@@ -269,6 +269,10 @@ export class SettingsComponent {
     return this.agentCliConfig.backend || 'custom-model';
   }
 
+  get isBuiltInOpenAIAgentsSelected(): boolean {
+    return this.currentAgentBackend === 'openai-agents-python';
+  }
+
   get activeInstallProvider(): AgentCliProvider {
     return this.currentAgentBackend === 'custom-model'
       ? 'codex-cli'
@@ -489,7 +493,17 @@ export class SettingsComponent {
   }
 
   getAgentCliLabel(provider: AgentCliProvider): string {
+    if (provider === 'openai-agents-python') {
+      return 'OpenAI Agents（内置）';
+    }
     return this.agentCliService.getProviderLabel(provider);
+  }
+
+  getAgentCliStatusText(provider: AgentCliProvider): string {
+    if (provider === 'openai-agents-python') {
+      return '已内置';
+    }
+    return this.agentCliStatuses[provider]?.installed ? '已安装' : '未安装';
   }
 
   getAgentCliResolvedRegistry(): string {
