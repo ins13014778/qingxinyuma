@@ -1,0 +1,250 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<patent_project>
+  <project_name>青芯驭码</project_name>
+  <document_type>专利申请技术架构说明</document_type>
+  <document_version>v1.0</document_version>
+  <generated_at>2026-04-24 14:38:17</generated_at>
+  <language>zh-CN</language>
+
+  <executive_summary>
+    <title>青芯驭码面向嵌入式开发与智能硬件编程的多智能体协同开发平台</title>
+    <summary>
+      青芯驭码是一种面向嵌入式开发、图形化编程、代码生成、硬件联调与智能代理协同执行的桌面软件系统。该系统通过图形化编程引擎、专业代码编辑器、主进程工具调度中心、安全桥接层、本地编译烧录链路、上下文记忆系统以及 OpenAI Agent 协同执行框架进行深度集成，形成从需求输入、工程理解、代码生成、工具调用、结果验证到持续迭代的闭环式开发机制。系统重点解决传统硬件开发过程中工具割裂、人工切换频繁、智能助手无法落地执行、复杂任务缺乏协同规划等问题，适用于教育、科研、竞赛、创客与智能硬件产品研发场景。
+    </summary>
+  </executive_summary>
+
+  <technical_field>
+    <content>
+      本发明涉及软件工程、人工智能代理系统、嵌入式开发环境、图形化编程、人机协同开发平台以及智能硬件工具链集成领域，具体涉及一种将图形化编程、代码编辑、硬件编译烧录、上下文记忆、工具调用和 OpenAI Agent 多智能体协同能力融合于统一桌面平台中的技术架构与实现方法。
+    </content>
+  </technical_field>
+
+  <background>
+    <problem_1>
+      现有嵌入式开发通常需要使用多个相互独立的软件工具，开发者需要在代码编辑器、编译工具、烧录工具、串口监视器、模型训练平台以及在线问答工具之间频繁切换，导致学习成本高、协作效率低、任务链路断裂。
+    </problem_1>
+    <problem_2>
+      现有智能问答系统大多停留在文字建议或代码补全阶段，缺乏直接调用本地工具、读取工程状态、执行编译烧录和验证结果的闭环能力，无法真正承担工程执行角色。
+    </problem_2>
+    <problem_3>
+      复杂硬件任务往往具有多阶段、多角色、多工具依赖的特点，单一智能体在连续推理、任务拆解、状态共享和执行反馈方面容易失焦，缺乏面向真实工程流程的协作式智能执行机制。
+    </problem_3>
+    <problem_4>
+      教学场景和创客场景对可视化、低门槛和本地一体化要求较高，但传统专业工具链难以兼顾入门体验与工程能力，难以形成从启蒙到高级开发的连续路径。
+    </problem_4>
+  </background>
+
+  <invention_purpose>
+    <content>
+      青芯驭码旨在提供一种统一的智能硬件开发平台，通过在桌面应用内构建图形化编程层、专业代码层、工具执行层、上下文管理层与 OpenAI Agent 协同层，实现需求理解、工程分析、代码生成、文件修改、编译烧录、串口验证和持续迭代的自动化闭环，提升嵌入式开发效率并降低智能硬件开发门槛。
+    </content>
+  </invention_purpose>
+
+  <overall_architecture>
+    <architecture_name>青芯驭码统一智能开发架构</architecture_name>
+    <layer index="1">
+      <name>交互展示层</name>
+      <description>
+        交互展示层面向最终用户提供图形化编程界面、代码编辑界面、AI 对话界面、配置界面、串口监视界面以及任务反馈界面。该层支持初学者以图形化方式构建逻辑，也支持高级开发者直接进入代码级开发和 Agent 任务编排流程。
+      </description>
+      <components>
+        <component>图形化编程工作区</component>
+        <component>代码编辑工作区</component>
+        <component>Agent 对话面板</component>
+        <component>任务状态反馈面板</component>
+        <component>设置与技能管理面板</component>
+      </components>
+    </layer>
+    <layer index="2">
+      <name>工程上下文层</name>
+      <description>
+        工程上下文层负责汇聚当前项目路径、当前文件内容、板卡配置、依赖关系、用户提示词配置、全局记忆和项目记忆，为智能体提供持续可用的环境认知能力。该层使智能体具备围绕当前工程状态进行决策和执行的基础。
+      </description>
+      <capabilities>
+        <capability>当前项目上下文注入</capability>
+        <capability>当前文件上下文注入</capability>
+        <capability>项目级记忆与全局记忆</capability>
+        <capability>提示词可配置与重置</capability>
+        <capability>任务历史与会话续接</capability>
+      </capabilities>
+    </layer>
+    <layer index="3">
+      <name>Agent 协同决策层</name>
+      <description>
+        Agent 协同决策层是本发明的核心智能层，用于接收用户自然语言任务、解析任务目标、规划执行步骤、选择调用的工具、在必要时拆分子任务，并通过 OpenAI Agent 机制组织多智能体协作。该层支持高级 Agent 模式与兼容稳定模式并存，兼顾创新能力与运行稳定性。
+      </description>
+      <subsystems>
+        <subsystem>主控协调 Agent</subsystem>
+        <subsystem>代码生成 Agent</subsystem>
+        <subsystem>工具执行 Agent</subsystem>
+        <subsystem>调试分析 Agent</subsystem>
+        <subsystem>结果汇总 Agent</subsystem>
+      </subsystems>
+    </layer>
+    <layer index="4">
+      <name>工具调度执行层</name>
+      <description>
+        工具调度执行层通过受控接口对接文件系统、命令执行器、编译器、烧录器、串口工具、终端环境、技能模块和 MCP 工具，负责将上层智能决策转化为真实可执行动作，并将执行结果结构化返回至 Agent 层继续推理。
+      </description>
+      <tools>
+        <tool>文件读取与修改工具</tool>
+        <tool>命令执行工具</tool>
+        <tool>项目创建工具</tool>
+        <tool>编译构建工具</tool>
+        <tool>固件烧录工具</tool>
+        <tool>串口输出读取工具</tool>
+        <tool>MCP 扩展工具</tool>
+        <tool>Skills 规则与知识注入工具</tool>
+      </tools>
+    </layer>
+    <layer index="5">
+      <name>系统桥接与安全控制层</name>
+      <description>
+        系统桥接与安全控制层用于隔离界面进程与系统原生能力，通过白名单接口、主进程代理、权限边界控制和安全存储机制，保证文件操作、命令执行、串口访问和配置读取在受控条件下运行，兼顾扩展性与安全性。
+      </description>
+      <security_points>
+        <point>受控白名单桥接</point>
+        <point>主进程代理执行</point>
+        <point>密钥加密存储</point>
+        <point>上下文边界与执行边界分离</point>
+      </security_points>
+    </layer>
+  </overall_architecture>
+
+  <openai_agent_core_features>
+    <feature index="1">
+      <name>多智能体协同编排</name>
+      <description>
+        青芯驭码将 OpenAI Agent 作为高级智能编排核心，不仅支持单一对话式处理，还支持围绕复杂工程任务拆分多个角色型智能体。各智能体可以承担规划、编码、执行、调试、总结等不同职责，从而提升复杂任务处理能力和持续执行能力。
+      </description>
+      <value>
+        该机制使系统从单点问答升级为多角色协作执行平台，特别适合处理包含代码生成、工具调用、硬件交互和状态验证的复合型任务。
+      </value>
+    </feature>
+    <feature index="2">
+      <name>与本地工具链深度融合</name>
+      <description>
+        OpenAI Agent 在青芯驭码中并非独立聊天模块，而是与项目文件、命令执行、构建工具、烧录工具、串口工具和 MCP 工具相互连接。智能体能够在理解任务后直接调用本地能力进行工程操作，从而实现从建议到执行的跃迁。
+      </description>
+      <value>
+        该特性显著提高智能代理的工程落地能力，避免传统 AI 只能输出文字而不能完成真实任务的局限。
+      </value>
+    </feature>
+    <feature index="3">
+      <name>长期上下文记忆与持续协作</name>
+      <description>
+        系统支持项目级记忆和全局记忆机制，用户可保存项目背景、板卡约束、偏好设置和工作规则。OpenAI Agent 在后续任务中可持续利用这些记忆信息，提升上下文连续性、任务稳定性与响应针对性。
+      </description>
+      <value>
+        该机制有助于将智能体从一次性问答工具转化为长期协作助手，更适合产品开发、教学训练和多轮工程迭代。
+      </value>
+    </feature>
+    <feature index="4">
+      <name>可编辑系统提示词与技能增强</name>
+      <description>
+        青芯驭码允许用户对高级 Agent 提示词、兼容模式提示词和记忆注入策略进行可视化配置，同时支持加载 MCP 与 Skills。由此可以根据应用场景动态增强 OpenAI Agent 的规则约束、领域知识和执行能力。
+      </description>
+      <value>
+        该机制使平台既具备通用性，又具备面向行业、课程、硬件类型和特定项目的可定制性。
+      </value>
+    </feature>
+    <feature index="5">
+      <name>双模式 Agent 共存机制</name>
+      <description>
+        系统保留兼容稳定模式，同时提供基于 OpenAI Agent 的高级 Agent 模式。用户可在不同任务场景下切换模式，既可使用稳定保守的原生工作链，也可使用具有更强推理和多智能体能力的高级工作链。
+      </description>
+      <value>
+        该设计兼顾已有系统的兼容性与新型智能协作能力，适合在产品持续演进过程中平衡体验与风险。
+      </value>
+    </feature>
+    <feature index="6">
+      <name>围绕真实工程任务持续执行</name>
+      <description>
+        OpenAI Agent 支持在青芯驭码中围绕一个任务持续执行，不以简单单轮回复为终点，而是根据工具调用结果继续推进后续步骤，例如继续修改文件、继续构建、继续读取日志、继续分析异常，直至任务完成或用户中断。
+      </description>
+      <value>
+        该特性符合真实研发流程中的长链路任务执行需求，是智能硬件开发自动化的重要基础。
+      </value>
+    </feature>
+  </openai_agent_core_features>
+
+  <key_function_modules>
+    <module>
+      <name>图形化编程模块</name>
+      <description>
+        用于通过图形积木方式构建程序逻辑，降低初学者使用门槛，并为后续代码生成和工程转换提供结构化输入。
+      </description>
+    </module>
+    <module>
+      <name>代码编辑模块</name>
+      <description>
+        提供专业代码编辑能力，支持从图形逻辑向文本工程开发过渡，实现面向实际嵌入式项目的精细化控制。
+      </description>
+    </module>
+    <module>
+      <name>项目与文件管理模块</name>
+      <description>
+        用于创建项目、管理文件、维护工程结构和组织依赖关系，为智能体与用户协同开发提供统一文件基础。
+      </description>
+    </module>
+    <module>
+      <name>编译与烧录模块</name>
+      <description>
+        将代码编译结果传递至硬件设备，实现程序构建、固件上传和设备端验证，是软件系统与物理硬件闭环的重要部分。
+      </description>
+    </module>
+    <module>
+      <name>串口与终端模块</name>
+      <description>
+        用于观察硬件输出、交互式读取日志和执行终端命令，为问题定位、运行验证和 Agent 反馈提供依据。
+      </description>
+    </module>
+    <module>
+      <name>Agent 与工具协同模块</name>
+      <description>
+        负责将 OpenAI Agent、兼容稳定模式、本地工具、MCP 工具和 Skills 融合在统一调度体系内，形成智能协作执行能力。
+      </description>
+    </module>
+    <module>
+      <name>记忆与配置模块</name>
+      <description>
+        负责管理系统提示词、项目记忆、全局记忆和用户策略偏好，增强多轮任务的一致性与持续性。
+      </description>
+    </module>
+  </key_function_modules>
+
+  <innovation_points>
+    <point index="1">
+      将 OpenAI Agent 与本地硬件开发工具链深度耦合，使智能体具备直接执行工程动作的能力，而非仅限于文本建议。
+    </point>
+    <point index="2">
+      提出双模式 Agent 共存架构，在保持系统稳定性的同时引入高级智能代理和多智能体编排能力。
+    </point>
+    <point index="3">
+      构建项目记忆、全局记忆、提示词配置、技能增强和工具调度的统一协作体系，实现长期连续的人机协同开发。
+    </point>
+    <point index="4">
+      通过图形化编程、专业代码编辑和 Agent 自动执行三者结合，打通从启蒙学习到复杂工程研发的连续链路。
+    </point>
+    <point index="5">
+      支持基于任务目标持续推进的智能执行过程，使系统具备面向实际智能硬件场景的自动化处理潜力。
+    </point>
+  </innovation_points>
+
+  <application_scenarios>
+    <scenario>嵌入式课程教学与实验平台</scenario>
+    <scenario>创客项目原型开发与快速验证</scenario>
+    <scenario>高校竞赛与科研项目开发</scenario>
+    <scenario>智能硬件产品开发辅助平台</scenario>
+    <scenario>边缘 AI 与多智能体协同控制研究</scenario>
+  </application_scenarios>
+
+  <patent_writing_focus>
+    <focus>
+      如用于专利申请文本撰写，可重点围绕统一架构、Agent 调度方法、工具调用闭环、记忆注入机制、多智能体协作方法和双模式智能体共存机制展开权利要求设计。
+    </focus>
+    <focus>
+      可进一步拆分为系统权利要求、方法权利要求、存储介质权利要求和界面交互流程权利要求。
+    </focus>
+  </patent_writing_focus>
+</patent_project>

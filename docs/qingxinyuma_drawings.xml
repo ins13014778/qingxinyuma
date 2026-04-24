@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<drawingsDocument>
+  <projectName>青芯驭码</projectName>
+  <documentTitle>说明书附图</documentTitle>
+  <figures>
+    <figure index="1">
+      <title>系统总体架构示意图</title>
+      <description>
+        图1示出了青芯驭码的总体架构，包括交互展示层、工程上下文层、Agent 协同决策层、工具调度执行层以及系统桥接与安全控制层。交互展示层包括图形化编程界面、代码编辑界面、Agent 对话面板和状态反馈面板；工程上下文层用于统一管理项目上下文、当前文件、记忆与提示词配置；Agent 协同决策层包括主控代理、项目处理代理、文件处理代理、终端执行代理、图形化编程代理、研究分析代理和原理图代理；工具调度执行层包括文件工具、命令工具、构建工具、烧录工具、串口工具、Skills 及 MCP 扩展工具；系统桥接与安全控制层用于对原生能力进行受控访问。
+      </description>
+    </figure>
+    <figure index="2">
+      <title>多智能体任务执行流程图</title>
+      <description>
+        图2示出了基于 OpenAI Agent 的多智能体协同执行流程，包括用户输入任务、主控代理进行任务理解、主控代理选择专业代理、专业代理调用工具执行动作、工具返回执行结果、主控代理判断是否继续迭代以及最终输出结果。所述流程支持一次任务中的多轮工具调用和多代理协作。
+      </description>
+    </figure>
+    <figure index="3">
+      <title>双模式智能代理切换结构图</title>
+      <description>
+        图3示出了青芯驭码中的兼容稳定模式与高级代理模式双模式结构。兼容稳定模式用于连接现有稳定执行链路，高级代理模式用于连接 OpenAI Agent 协同执行链路，两者共享统一的工程上下文和工具能力层，由界面层提供模式切换入口。
+      </description>
+    </figure>
+    <figure index="4">
+      <title>工程记忆与上下文注入示意图</title>
+      <description>
+        图4示出了项目级记忆、全局记忆、当前项目上下文、当前文件内容和用户提示词配置共同构成上下文注入源，并在每次任务执行前注入主控代理或专业代理，以支持长期连续协作。
+      </description>
+    </figure>
+  </figures>
+</drawingsDocument>

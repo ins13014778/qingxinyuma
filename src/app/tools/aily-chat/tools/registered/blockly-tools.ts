@@ -214,6 +214,67 @@ class QueryBlockDefinitionTool implements IAilyTool {
 }
 
 // ============================
+// search_blocks_by_keyword
+// ============================
+
+class SearchBlocksByKeywordTool implements IAilyTool {
+  readonly name = 'search_blocks_by_keyword';
+  readonly schema = findLegacySchema('search_blocks_by_keyword') || {
+    name: 'search_blocks_by_keyword',
+    description: '按关键词搜索可用的 Blockly 积木块定义，返回匹配的块类型、所属库和基础连接信息。',
+    input_schema: {
+      type: 'object',
+      properties: {
+        keyword: {
+          type: 'string',
+          description: '要搜索的关键词，例如 led、serial、温度、loop、button'
+        },
+        library: {
+          type: 'string',
+          description: '可选，按指定库筛选'
+        },
+        connectionType: {
+          type: 'string',
+          enum: ['input_statement', 'input_value', 'previousStatement', 'nextStatement', 'output'],
+          description: '可选，按连接类型筛选'
+        },
+        refresh: {
+          type: 'boolean',
+          description: '是否强制刷新块定义缓存',
+          default: false
+        }
+      },
+      required: ['keyword']
+    },
+    agents: ['mainAgent']
+  };
+  readonly environment = 'gui' as const;
+
+  async invoke(args: any, ctx: ToolContext): Promise<ToolUseResult> {
+    if (!ctx.host?.project) {
+      return { is_error: true, content: '项目服务不可用，无法搜索积木块。' };
+    }
+    return queryBlockDefinitionHandler(ctx.host.project, {
+      searchKeyword: args?.keyword,
+      library: args?.library,
+      connectionType: args?.connectionType,
+      refresh: !!args?.refresh,
+      scanFiles: true,
+      useRealData: true,
+    });
+  }
+
+  getStartText(args: any): string {
+    return `按关键词搜索积木块: ${args?.keyword || 'unknown'}`;
+  }
+
+  getResultText(args: any, result?: ToolUseResult): string {
+    if (result?.is_error) return '积木块关键词搜索失败';
+    return `积木块关键词搜索完成: ${args?.keyword || 'unknown'}`;
+  }
+}
+
+// ============================
 // analyze_library_blocks
 // ============================
 
@@ -330,5 +391,6 @@ ToolRegistry.register(new ConfigureBlockTool());
 ToolRegistry.register(new DeleteBlockTool());
 ToolRegistry.register(new GetWorkspaceOverviewTool());
 ToolRegistry.register(new QueryBlockDefinitionTool());
+ToolRegistry.register(new SearchBlocksByKeywordTool());
 ToolRegistry.register(new AnalyzeLibraryBlocksTool());
 ToolRegistry.register(new VerifyBlockExistenceTool());

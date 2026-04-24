@@ -400,6 +400,55 @@ nz-resize-handle {
   }
 }
 
+.footer-backend-menu-anchor {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  .footer-inline-menu {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    min-width: 180px;
+    padding: 6px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.88);
+    box-shadow: 0 18px 48px rgba(97, 127, 173, 0.18);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1200;
+  }
+
+  .footer-inline-menu-item {
+    padding: 10px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.18s ease, transform 0.18s ease, color 0.18s ease;
+    color: var(--aily-menu-text, var(--aily-text-primary));
+
+    &:hover {
+      background: var(--aily-menu-hover, rgba(255, 255, 255, 0.72));
+      transform: translateX(2px);
+    }
+
+    &.current {
+      background: rgba(0, 122, 204, 0.1);
+      color: var(--aily-color-accent, #007acc);
+    }
+  }
+
+  .label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+}
+
 .mode-menu {
   ::ng-deep {
     .menu-item {

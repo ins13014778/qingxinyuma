@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, ViewChildren, QueryList, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ElementRef, ViewChild, ViewChildren, QueryList, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, HostListener } from '@angular/core';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { FormsModule } from '@angular/forms';
 import { XDialogComponent } from './components/x-dialog/x-dialog.component';
@@ -169,18 +169,16 @@ export class AilyChatComponent implements OnDestroy {
   get currentAgentBackendName(): string {
     switch (this.currentAgentBackend) {
       case 'openai-agents-python':
-        return 'OpenAI Agent';
+        return '高级Agent';
       case 'custom-model':
-        return '模型直连';
+        return '兼容稳定模式';
       default:
         return this.agentCliService.getProviderLabel(this.currentAgentBackend);
     }
   }
 
   get footerAgentBackendName(): string {
-    return this.currentAgentBackend === 'openai-agents-python'
-      ? 'Agent模式'
-      : this.currentAgentBackendName;
+    return this.currentAgentBackendName;
   }
 
   get footerModelName(): string {
@@ -204,6 +202,7 @@ export class AilyChatComponent implements OnDestroy {
 
   bottomHeight = 180;
   showSettings = false;
+  showFooterBackendMenu = false;
 
   constructor(
     private uiService: UiService,
@@ -494,7 +493,28 @@ export class AilyChatComponent implements OnDestroy {
     const backend = item.data?.backend as AgentCliBackend | undefined;
     if (!backend) return;
     this.agentCliService.setSelectedBackend(backend);
-    this.menuManager.showBackendMenu = false;
+    this.showFooterBackendMenu = false;
+    this.cdr.markForCheck();
+    this.message.success(`已切换为${item.name}`);
+  }
+
+  toggleFooterBackendMenu(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    this.menuManager.showMode = false;
+    this.menuManager.showModelMenu = false;
+    this.showFooterBackendMenu = !this.showFooterBackendMenu;
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:click', ['$event'])
+  handleDocumentClick(event: MouseEvent): void {
+    if (!this.showFooterBackendMenu) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('.footer-backend-menu-anchor')) {
+      return;
+    }
+    this.showFooterBackendMenu = false;
     this.cdr.markForCheck();
   }
 
@@ -594,25 +614,13 @@ export class AilyChatComponent implements OnDestroy {
   get BackendList(): IMenuItem[] {
     return [
       {
-        name: '自定义模型',
+        name: '兼容稳定模式',
         action: 'select-backend',
         current: this.currentAgentBackend === 'custom-model',
         data: { backend: 'custom-model' }
       },
       {
-        name: 'Codex CLI',
-        action: 'select-backend',
-        current: this.currentAgentBackend === 'codex-cli',
-        data: { backend: 'codex-cli' }
-      },
-      {
-        name: 'Claude Code',
-        action: 'select-backend',
-        current: this.currentAgentBackend === 'claude-code',
-        data: { backend: 'claude-code' }
-      },
-      {
-        name: 'OpenAI Agents Python',
+        name: '高级Agent',
         action: 'select-backend',
         current: this.currentAgentBackend === 'openai-agents-python',
         data: { backend: 'openai-agents-python' }

@@ -892,6 +892,18 @@ Do not create non-existent boards and libraries.
 
       const toolSets = this.getOpenAIAgentsToolSets();
       try { window['log']?.info?.(`[OpenAIAgents] toolSets ready main=${toolSets.mainTools.length} schematic=${toolSets.schematicTools.length}`); } catch {}
+      const coverage = this.auditOpenAIAgentsToolCoverage(toolSets);
+      try {
+        window['log']?.info?.(
+          `[OpenAIAgents] coverage main=${coverage.main.executable}/${coverage.main.total} schematic=${coverage.schematic.executable}/${coverage.schematic.total}`
+        );
+        if (coverage.main.missing.length > 0) {
+          window['log']?.warn?.(`[OpenAIAgents] missing main tools=${coverage.main.missing.join(',')}`);
+        }
+        if (coverage.schematic.missing.length > 0) {
+          window['log']?.warn?.(`[OpenAIAgents] missing schematic tools=${coverage.schematic.missing.join(',')}`);
+        }
+      } catch {}
 
       const sessionDbPath = this.getOpenAIAgentsSessionDbPath();
       const mcpConfigPath = this.getOpenAIAgentsMcpConfigPath();
@@ -908,6 +920,7 @@ Do not create non-existent boards and libraries.
           sessionId: this.sessionId,
           sessionDbPath,
           runStatePath: this.getOpenAIAgentsRunStatePath(),
+          maxTurns: Math.max(40, this.ailyChatConfigService.maxCount || 40),
           mainAgentInstructions: this.ailyChatConfigService.advancedAgentSystemPrompt,
           mcpConfigPath,
           builtInAgents,
@@ -1094,6 +1107,35 @@ Do not create non-existent boards and libraries.
         ...tool,
         requires_approval: toolRequiresApproval(tool.name),
       })),
+    };
+  }
+
+  private auditOpenAIAgentsToolCoverage(toolSets: { mainTools: any[]; schematicTools: any[] }): {
+    main: { total: number; executable: number; missing: string[] };
+    schematic: { total: number; executable: number; missing: string[] };
+  } {
+    const isExecutable = (toolName: string): boolean => {
+      if (!toolName) return false;
+      if (toolName.startsWith('mcp_')) return true;
+      if (toolName === 'search_available_tools') return true;
+      if (toolName === 'load_skill') return true;
+      if (toolName === 'run_subagent') return true;
+      return ToolRegistry.has(toolName);
+    };
+
+    const summarize = (tools: any[]) => {
+      const names = [...new Set((tools || []).map(tool => tool?.name).filter(Boolean))];
+      const missing = names.filter(name => !isExecutable(name));
+      return {
+        total: names.length,
+        executable: names.length - missing.length,
+        missing,
+      };
+    };
+
+    return {
+      main: summarize(toolSets.mainTools),
+      schematic: summarize(toolSets.schematicTools),
     };
   }
 

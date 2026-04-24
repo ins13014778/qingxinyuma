@@ -69,6 +69,9 @@ SPECIALIST_AGENT_DEFS = [
             "switch_board",
             "get_board_config",
             "set_board_config",
+            "get_context",
+            "get_project_context",
+            "get_project_info",
             "save_arch",
             "clone_repository",
             "get_errors",
@@ -121,9 +124,20 @@ SPECIALIST_AGENT_DEFS = [
         "key": "blockly",
         "name": "BlocklySpecialist",
         "instructions": (
-            "You specialize in Blockly, ABS syntax, library block analysis, DSL block generation, and code generation diagnostics."
+            "You specialize in Blockly, block search, ABS syntax, library block analysis, "
+            "block creation, structure generation, and code generation diagnostics. "
+            "When the user asks to build or edit blocks, prefer using Blockly tools directly "
+            "instead of stopping at analysis."
         ),
         "matcher": lambda name: name in {
+            "search_blocks_by_keyword",
+            "smart_block_tool",
+            "connect_blocks_tool",
+            "create_code_structure_tool",
+            "configure_block_tool",
+            "delete_block_tool",
+            "get_workspace_overview_tool",
+            "queryBlockDefinitionTool",
             "analyze_library_blocks",
             "get_abs_syntax",
             "verify_block_existence",
@@ -135,7 +149,9 @@ SPECIALIST_AGENT_DEFS = [
         "key": "research",
         "name": "ResearchSpecialist",
         "instructions": (
-            "You specialize in searching available tools, loading skills, fetching remote content, and hardware/library discovery."
+            "You specialize in searching available tools, loading skills, fetching remote content, "
+            "and hardware or library discovery. Prefer research-oriented tools first and avoid using "
+            "file-editing tools unless the user explicitly asks for file changes."
         ),
         "matcher": lambda name: name in {
             "search_available_tools",
@@ -175,6 +191,11 @@ TOOL_CALL_LIMITS = {
     "get_context": 1,
     "search_available_tools": 1,
     "load_skill": 1,
+    "search_blocks_by_keyword": 8,
+    "smart_block_tool": 6,
+    "create_code_structure_tool": 4,
+    "configure_block_tool": 6,
+    "connect_blocks_tool": 6,
 }
 GET_ERRORS_FAST_DEGRADE_MESSAGE = (
     "get_errors failed or diagnostics are currently unavailable. "
@@ -464,6 +485,7 @@ def classify_specialist_tools(main_tools: list[dict[str, Any]]) -> tuple[list[di
 
         if name in {"load_skill", "search_available_tools"}:
             coordinator_tools.append(tool)
+            specialist_tools["research"].append(tool)
             continue
 
         matched = False
@@ -545,8 +567,16 @@ def clear_run_state(run_state_path: str) -> None:
         file_path.unlink()
 
 
-async def stream_single_run(main_agent: Agent[Any], input_data: Any, session: SQLiteSession | None):
-    result = Runner.run_streamed(main_agent, input_data, session=session) if not isinstance(input_data, RunState) else Runner.run_streamed(main_agent, input_data)
+async def stream_single_run(
+    main_agent: Agent[Any],
+    input_data: Any,
+    session: SQLiteSession | None,
+    max_turns: int,
+):
+    if not isinstance(input_data, RunState):
+        result = Runner.run_streamed(main_agent, input_data, session=session, max_turns=max_turns)
+    else:
+        result = Runner.run_streamed(main_agent, input_data, max_turns=max_turns)
     async for event in result.stream_events():
         if event.type == "raw_response_event":
             raw = event.data
@@ -578,6 +608,7 @@ async def run_turn(request: dict) -> str:
     session_db_path = request.get("sessionDbPath") or ":memory:"
     run_state_path = request.get("runStatePath") or ""
     mcp_config_path = request.get("mcpConfigPath")
+    max_turns = max(20, int(request.get("maxTurns") or 40))
 
     if not user_input.strip() and not run_state_path:
         raise RuntimeError("Missing user input content.")
@@ -611,7 +642,7 @@ async def run_turn(request: dict) -> str:
         coordinator_tools, specialist_agent_defs = classify_specialist_tools(main_tools)
 
         schematic_agent = Agent(
-            name="SchematicAgent",
+            name="schematicAgent",
             instructions=SCHEMATIC_AGENT_INSTRUCTIONS,
             model=model,
             tools=[create_bridge_tool(tool) for tool in schematic_tools],
@@ -684,8 +715,14 @@ async def run_turn(request: dict) -> str:
             tools=[
                 *[create_bridge_tool(tool) for tool in coordinator_tools],
                 schematic_agent.as_tool(
-                    tool_name="delegate_to_schematic_agent",
+                    tool_name="delegate_to_schematicAgent",
                     tool_description="Delegate schematic, wiring, pin map, or board connection tasks to the schematic specialist.",
+                    needs_approval=True,
+                    session=session,
+                ),
+                schematic_agent.as_tool(
+                    tool_name="delegate_to_schematic_agent",
+                    tool_description="Legacy alias for delegate_to_schematicAgent.",
                     needs_approval=True,
                     session=session,
                 ),
@@ -723,7 +760,7 @@ async def run_turn(request: dict) -> str:
             current_input: Any = state if state is not None else user_input
 
             while True:
-                result = await stream_single_run(main_agent, current_input, session)
+                result = await stream_single_run(main_agent, current_input, session, max_turns)
 
                 if result.interruptions:
                     state = result.to_state()

@@ -6,6 +6,7 @@ export interface OpenAIAgentsBackendRequest {
   sessionId: string;
   sessionDbPath: string;
   runStatePath: string;
+  maxTurns?: number;
   mainAgentInstructions?: string;
   mcpConfigPath?: string;
   builtInAgents?: Array<{

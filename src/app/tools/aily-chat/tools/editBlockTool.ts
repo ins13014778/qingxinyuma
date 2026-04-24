@@ -9814,6 +9814,7 @@ function parseBlockDefinition(blockDef: any, library: string, filePath: string):
  */
 export async function queryBlockDefinitionTool(projectService: any, args: {
   blockType?: string;
+  searchKeyword?: string;
   library?: string;
   connectionType?: 'input_statement' | 'input_value' | 'previousStatement' | 'nextStatement' | 'output';
   refresh?: boolean;
@@ -9824,7 +9825,7 @@ export async function queryBlockDefinitionTool(projectService: any, args: {
   // console.log('📦 查询参数:', JSON.stringify(args, null, 2));
 
   try {
-    const { blockType, library, connectionType, refresh = false, useRealData = false, scanFiles = true } = args;
+    const { blockType, searchKeyword, library, connectionType, refresh = false, useRealData = false, scanFiles = true } = args;
 
     let allResults: BlockConnectionInfo[] = [];
 
@@ -9882,7 +9883,7 @@ export async function queryBlockDefinitionTool(projectService: any, args: {
     }
 
     // 应用过滤条件
-    const filteredResults = filterBlockDefinitions(allResults, { blockType, library, connectionType });
+    const filteredResults = filterBlockDefinitions(allResults, { blockType, searchKeyword, library, connectionType });
     const summary = formatBlockDefinitionResults(filteredResults, args);
 
     const toolResult = {
@@ -10183,15 +10184,32 @@ function filterBlockDefinitions(
   allBlocks: BlockConnectionInfo[],
   filters: {
     blockType?: string;
+    searchKeyword?: string;
     library?: string;
     connectionType?: string;
   }
 ): BlockConnectionInfo[] {
-  const { blockType, library, connectionType } = filters;
+  const { blockType, searchKeyword, library, connectionType } = filters;
+  const normalizedKeyword = searchKeyword?.trim().toLowerCase();
   
   return allBlocks.filter(block => {
     // 按块类型过滤
     if (blockType && block.blockType !== blockType) return false;
+
+    // 按关键词搜索块类型、库名、message0、tooltip
+    if (normalizedKeyword) {
+      const haystack = [
+        block.blockType,
+        block.metadata.library,
+        block.metadata.message0,
+        block.metadata.tooltip,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      if (!haystack.includes(normalizedKeyword)) return false;
+    }
     
     // 按库过滤
     if (library && block.metadata.library !== library) return false;
