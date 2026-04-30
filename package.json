@@ -31,7 +31,7 @@
       }
     ],
     "directories": {
-      "output": "dist/aily-blockly/"
+      "output": "dist/qingxinyuma/"
     },
     "files": [
       "!**/*",
@@ -50,7 +50,7 @@
         "to": "electron/node_modules"
       },
       {
-        "from": "dist/aily-blockly/browser",
+        "from": "dist/qingxinyuma/browser",
         "to": "renderer"
       }
     ],
@@ -115,7 +115,7 @@
           "ext": "abi",
           "name": "青芯驭码项目",
           "description": "青芯驭码项目文件",
-          "mimeType": "application/x-aily-blockly-project"
+          "mimeType": "application/x-qingxinyuma-project"
         }
       ]
     },

@@ -1,6 +1,6 @@
 ﻿import { AilyHost } from '../core/host';
 /**
- * Aily Blockly 命令安全验证器
+ * 青芯驭码 命令安全验证器
  * 实现命令白名单/黑名单和危险命令检测
  * 
  * @see docs/aily-security-guidelines.md

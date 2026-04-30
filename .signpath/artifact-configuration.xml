@@ -6,12 +6,12 @@
   <!-- NSIS Installer Signing -->
   <nsis-installer>
     <!-- Sign the main installer executable -->
-    <pe-file path="aily-blockly-*.exe" />
+    <pe-file path="qingxinyuma-*.exe" />
     
     <!-- Sign files inside the installer -->
     <directory path="$INSTDIR">
       <!-- Main Electron executable -->
-      <pe-file path="aily blockly.exe" />
+      <pe-file path="qingxinyuma.exe" />
       
       <!-- Electron framework DLLs -->
       <pe-file path="*.dll" max-matches="unbounded" />

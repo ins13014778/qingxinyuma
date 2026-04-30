@@ -1,5 +1,5 @@
 ﻿/**
- * Aily Blockly 安全服务
+ * 青芯驭码 安全服务
  * 实现路径验证、敏感文件检测、权限控制等核心安全功能
  * 
  * @see docs/aily-security-guidelines.md

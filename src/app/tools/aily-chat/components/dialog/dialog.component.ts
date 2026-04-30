@@ -926,7 +926,7 @@ export class DialogComponent implements OnInit, OnChanges, OnDestroy {
    */
   private fixCodeBlockEndings(content: string): string {
     // 定义 aily 代码块类型
-    const ailyTypes = ['aily-blockly', 'aily-board', 'aily-library', 'aily-state', 'aily-button', 'aily-error', 'aily-mermaid', 'aily-task-action', 'aily-think'];
+    const ailyTypes = ['qingxinyuma', 'aily-board', 'aily-library', 'aily-state', 'aily-button', 'aily-error', 'aily-mermaid', 'aily-task-action', 'aily-think'];
 
     // 只处理代码块结束符号 ``` (不是开始符号)
     // 查找所有的 ``` 并判断是否为结束符号

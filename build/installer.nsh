@@ -5,9 +5,9 @@
 
 !macro customInit
   ; 多种方式尝试关闭可能运行的实例
-  nsExec::Exec 'taskkill /F /IM aily-blockly.exe /T'
+  nsExec::Exec 'taskkill /F /IM qingxinyuma.exe /T'
   nsExec::Exec 'taskkill /F /IM ${PRODUCT_NAME}.exe /T'
-  nsExec::Exec 'taskkill /F /IM "Aily Blockly.exe" /T'
+  nsExec::Exec 'taskkill /F /IM "qingxinyuma.exe" /T'
   
   ; 等待确保进程完全终止
   Sleep 2000

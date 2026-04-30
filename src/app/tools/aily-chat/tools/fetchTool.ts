@@ -362,7 +362,7 @@ export class FetchToolService {
     try {
       let repoInfo = '';
       let readmeContent = '';
-      const apiHeaders = new HttpHeaders({ 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'AilyBlockly/1.0' });
+      const apiHeaders = new HttpHeaders({ 'Accept': 'application/vnd.github.v3+json', 'User-Agent': 'Qingxinyuma/1.0' });
 
       // 获取仓库基本信息
       try {
@@ -385,7 +385,7 @@ export class FetchToolService {
       }
 
       // 获取 README
-      const readmeHeaders = new HttpHeaders({ 'User-Agent': 'AilyBlockly/1.0' });
+      const readmeHeaders = new HttpHeaders({ 'User-Agent': 'Qingxinyuma/1.0' });
       try {
         readmeContent = await firstValueFrom(
           this.http.get(`https://raw.githubusercontent.com/${owner}/${repo}/HEAD/README.md`, { responseType: 'text', headers: readmeHeaders }).pipe(timeout(timeoutMs))

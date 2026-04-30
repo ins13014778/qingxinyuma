@@ -15,7 +15,7 @@ import { XAilyLibraryViewerComponent } from './x-aily-library-viewer/x-aily-libr
 import { XAilyThinkViewerComponent } from './x-aily-think-viewer/x-aily-think-viewer.component';
 import { MermaidCodeComponent } from 'ngx-x-markdown';
 import { XAilyContextViewerComponent } from './x-aily-context-viewer/x-aily-context-viewer.component';
-import { XAilyBlocklyViewerComponent } from './x-aily-blockly-viewer/x-aily-blockly-viewer.component';
+import { XQingxinyumaViewerComponent } from './x-qingxinyuma-viewer/x-qingxinyuma-viewer.component';
 import { XAilyErrorViewerComponent } from './x-aily-error-viewer/x-aily-error-viewer.component';
 import { XAilyTaskActionViewerComponent } from './x-aily-task-action-viewer/x-aily-task-action-viewer.component';
 import { XAilyQuestionViewerComponent } from './x-aily-question-viewer/x-aily-question-viewer.component';
@@ -37,7 +37,7 @@ import { ChatService } from '../../services/chat.service';
 /** 所有 aily-* 自定义代码块类型 */
 const AILY_TYPES = [
   'aily-state', 'aily-button', 'aily-board', 'aily-library',
-  'aily-think', 'aily-mermaid', 'aily-context', 'aily-blockly',
+  'aily-think', 'aily-mermaid', 'aily-context', 'qingxinyuma',
   'aily-error', 'aily-task-action', 'aily-question', 'aily-approval',
   'aily-runstate', 'aily-trace',
 ] as const;
@@ -54,7 +54,7 @@ const AILY_TYPES = [
  * - aily-think:       AI 思考过程折叠块
  * - aily-mermaid:     Mermaid 流程图
  * - aily-context:     代码上下文查看器
- * - aily-blockly:     Blockly 积木代码查看器
+ * - qingxinyuma:     青芯驭码 Blockly 积木代码查看器
  * - aily-error:       错误信息卡片
  * - aily-task-action: 任务动作面板
  * - 其他:             标准代码块
@@ -74,7 +74,7 @@ const AILY_TYPES = [
     XAilyThinkViewerComponent,
     MermaidCodeComponent,
     XAilyContextViewerComponent,
-    XAilyBlocklyViewerComponent,
+    XQingxinyumaViewerComponent,
     XAilyErrorViewerComponent,
     XAilyTaskActionViewerComponent,
     XAilyQuestionViewerComponent,
@@ -153,8 +153,8 @@ const AILY_TYPES = [
     @if (isType('aily-context') && parsedData) {
       <x-aily-context-viewer [data]="parsedData" />
     }
-    @if (isType('aily-blockly') && parsedData) {
-      <x-aily-blockly-viewer [data]="parsedData" />
+    @if (isType('qingxinyuma') && parsedData) {
+      <x-qingxinyuma-viewer [data]="parsedData" />
     }
     @if (isType('aily-error') && parsedData) {
       <x-aily-error-viewer [data]="parsedData" />

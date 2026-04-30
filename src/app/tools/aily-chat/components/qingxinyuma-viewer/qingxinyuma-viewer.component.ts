@@ -2,17 +2,17 @@ import { Component, Input, OnInit, OnChanges, SimpleChanges } from '@angular/cor
 import { CommonModule } from '@angular/common';
 
 /**
- * Aily Blockly 查看器组件
+ * 青芯驭码 Blockly 查看器组件
  * 用于显示 Blockly 积木代码和相关信息
  */
 @Component({
-  selector: 'app-aily-blockly-viewer',
+  selector: 'app-qingxinyuma-viewer',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './aily-blockly-viewer.component.html',
-  styleUrls: ['./aily-blockly-viewer.component.scss']
+  templateUrl: './qingxinyuma-viewer.component.html',
+  styleUrls: ['./qingxinyuma-viewer.component.scss']
 })
-export class AilyBlocklyViewerComponent implements OnInit, OnChanges {
+export class QingxinyumaViewerComponent implements OnInit, OnChanges {
   @Input() data: any;
 
   blocklyData: any = null;

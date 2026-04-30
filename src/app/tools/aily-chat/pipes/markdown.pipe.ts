@@ -130,7 +130,7 @@ export class MarkdownPipe implements PipeTransform {
    * 检查是否为特殊的 Aily 代码块类型
    */
   private isAilyCodeBlock(lang: string): boolean {
-    const ailyTypes = ['aily-blockly', 'aily-board', 'aily-library', 'aily-state', 'aily-button', 'aily-error', 'aily-mermaid', 'mermaid', 'aily-task-action', 'aily-think', 'aily-context', 'aily-approval'];
+    const ailyTypes = ['qingxinyuma', 'aily-board', 'aily-library', 'aily-state', 'aily-button', 'aily-error', 'aily-mermaid', 'mermaid', 'aily-task-action', 'aily-think', 'aily-context', 'aily-approval'];
     // 确保 lang 被正确 trim，避免空格或换行符导致匹配失败
     const normalizedLang = lang?.trim()?.toLowerCase() || '';
     return ailyTypes.includes(normalizedLang);
@@ -205,9 +205,9 @@ export class MarkdownPipe implements PipeTransform {
 
       // 根据类型验证和规范化数据
       switch (type) {
-        case 'aily-blockly':
+        case 'qingxinyuma':
           return {
-            type: 'aily-blockly',
+            type: 'qingxinyuma',
             blocks: jsonData.blocks || jsonData,
             workspace: jsonData.workspace || {},
             metadata: jsonData.metadata || {},

@@ -174,7 +174,7 @@ export const dataCopyToStorage = function() {
         });
       }
       const enriched = {
-        format: 'aily-blockly-clipboard',
+        format: 'qingxinyuma-clipboard',
         version: 1,
         blocks: storage,
         connections: connectionDBList.slice(),
@@ -199,7 +199,7 @@ export const dataCopyFromStorage = function() {
       const text = ailyClipboard.readText();
       if (text) {
         const parsed = JSON.parse(text);
-        if (parsed && parsed.format === 'aily-blockly-clipboard' && parsed.timestamp > timestamp) {
+        if (parsed && parsed.format === 'qingxinyuma-clipboard' && parsed.timestamp > timestamp) {
           timestamp = parsed.timestamp;
           copyData.clear();
           (parsed.blocks || []).forEach((data) => {
@@ -219,7 +219,7 @@ export const dataCopyFromStorage = function() {
       }
     }
   } catch (e) {
-    // Not aily-blockly data or parse error, fall through to localStorage
+    // Not qingxinyuma data or parse error, fall through to localStorage
   }
 
   // Fallback: localStorage (same-instance cross-tab)
@@ -301,7 +301,7 @@ export const blockNumGetFromStorage = function(useCopyPasteCrossTab) {
       const text = ailyClipboard.readText();
       if (text) {
         const parsed = JSON.parse(text);
-        if (parsed && parsed.format === 'aily-blockly-clipboard' && parsed.timestamp > timestamp) {
+        if (parsed && parsed.format === 'qingxinyuma-clipboard' && parsed.timestamp > timestamp) {
           return (parsed.blocks || []).length;
         }
       }

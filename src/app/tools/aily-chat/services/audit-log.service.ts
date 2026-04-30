@@ -1,5 +1,5 @@
 ﻿/**
- * Aily Blockly 审计日志服务
+ * 青芯驭码 审计日志服务
  * 记录所有工具调用和操作，用于安全审计和异常检测
  * 
  * @see docs/aily-security-guidelines.md

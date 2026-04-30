@@ -783,7 +783,7 @@ export class XDialogComponent implements OnChanges, AfterViewChecked, OnDestroy 
       .replace(/<toolResult>[\s\S]*?<\/toolResult>/g, '')
       .replace(/<info>[\s\S]*?<\/info>/g, '');
 
-    const ailyTypes = ['aily-blockly', 'aily-board', 'aily-library', 'aily-state',
+    const ailyTypes = ['qingxinyuma', 'aily-board', 'aily-library', 'aily-state',
       'aily-button', 'aily-error', 'aily-mermaid', 'aily-task-action', 'aily-think', 'aily-context', 'aily-question', 'aily-approval'];
 
     // 保留 match：当 after 为完整 aily 类型、流式前缀、或有效语言标识符（如 json、typescript）时

@@ -10,7 +10,7 @@
  * - aily-think: 思考过程查看器
  * - aily-mermaid: Mermaid 图表查看器
  * - aily-context: 上下文查看器
- * - aily-blockly: Blockly 积木代码查看器
+ * - qingxinyuma: Blockly 积木代码查看器
  * - aily-error: 错误信息查看器
  * - aily-task-action: 任务操作查看器
  */
@@ -198,13 +198,13 @@ export const ChatListExamples = [
     },
 
     // =====================================
-    // aily-blockly 积木代码查看器示例
+    // qingxinyuma 积木代码查看器示例
     // 支持属性: blocks, xml, workspace, code, title
     // =====================================
     {
         content: `这是推荐的积木代码：
 
-\`\`\`aily-blockly
+\`\`\`qingxinyuma
 {
     "title": "LED闪烁程序",
     "code": "void setup() {\n  pinMode(13, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(13, HIGH);\n  delay(500);\n  digitalWrite(13, LOW);\n  delay(500);\n}",

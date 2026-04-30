@@ -5,12 +5,12 @@ import { browserEvents } from 'blockly';
 import { BlocklyService } from '../../editors/blockly-editor/services/blockly.service';
 
 @Component({
-  selector: 'app-aily-blockly',
+  selector: 'app-qingxinyuma',
   imports: [],
-  templateUrl: './aily-blockly.component.html',
-  styleUrl: './aily-blockly.component.scss',
+  templateUrl: './qingxinyuma.component.html',
+  styleUrl: './qingxinyuma.component.scss',
 })
-export class AilyBlocklyComponent implements OnInit {
+export class QingxinyumaComponent implements OnInit {
   @ViewChild('blocklyArea', { static: true }) blocklyArea!: ElementRef;
   @ViewChild('blocklyDiv', { static: true }) blocklyDiv!: ElementRef;
 

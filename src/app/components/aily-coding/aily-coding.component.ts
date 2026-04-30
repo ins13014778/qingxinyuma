@@ -1,11 +1,11 @@
 import { Component, Input } from '@angular/core';
 import { NgIf } from '@angular/common';
 import { NzIconDirective } from 'ng-zorro-antd/icon';
-import { AilyBlocklyComponent } from '../aily-blockly/aily-blockly.component';
+import { QingxinyumaComponent } from '../qingxinyuma/qingxinyuma.component';
 
 @Component({
   selector: 'app-aily-coding',
-  imports: [NgIf, NzIconDirective, AilyBlocklyComponent],
+  imports: [NgIf, NzIconDirective, QingxinyumaComponent],
   templateUrl: './aily-coding.component.html',
   styleUrl: './aily-coding.component.scss',
 })

@@ -39,7 +39,7 @@ jobs:
 
       - name: Build NSIS Installer
         run: |
-          npx electron-builder build --win nsis --prepackaged "dist/aily-blockly/win-unpacked"
+          npx electron-builder build --win nsis --prepackaged "dist/qingxinyuma/win-unpacked"
         env:
           NODE_ENV: production
 
@@ -50,23 +50,23 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: unsigned-installer
-          path: dist/aily-blockly/*.exe
+          path: dist/qingxinyuma/*.exe
 
       - name: Sign Installer with SignPath
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: '${{ secrets.SIGNPATH_API_TOKEN }}'
           organization-id: 'bd01a768-a9e3-4a62-945d-fcfdc37a299e'
-          project-slug: 'aily-blockly' 
+          project-slug: 'qingxinyuma' 
           signing-policy-slug: 'test-signing'
           github-artifact-id: '${{ steps.upload_unsigned.outputs.artifact-id }}'
           wait-for-completion: true
-          output-artifact-directory: 'dist/aily-blockly'
+          output-artifact-directory: 'dist/qingxinyuma'
 
       # 重新生成 latest.yml（使用签名后的 exe hash）
       - name: Regenerate latest.yml with signed exe hash
         run: |
-          cd dist/aily-blockly
+          cd dist/qingxinyuma
           
           # 获取签名后的 exe 文件信息
           $exeFile = Get-ChildItem -Filter "*.exe" | Select-Object -First 1
@@ -114,8 +114,8 @@ jobs:
       - name: Archive Windows Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AilyBlockly-Windows-Package
-          path: dist/aily-blockly/
+          name: Qingxinyuma-Windows-Package
+          path: dist/qingxinyuma/
   
   # 任务 2：macOS 客户端构建
   build-macos:
@@ -173,7 +173,7 @@ jobs:
       - name: Manual Notarization (if needed)
         if: always()
         run: |
-          DMG_PATH=$(find dist/aily-blockly -name "*.dmg" -type f | head -n 1)
+          DMG_PATH=$(find dist/qingxinyuma -name "*.dmg" -type f | head -n 1)
           
           if [ -z "$DMG_PATH" ]; then
             echo "❌ DMG not found!"
@@ -200,15 +200,15 @@ jobs:
 
       - name: Final Verification
         run: |
-          DMG_PATH=$(find dist/aily-blockly -name "*.dmg" -type f | head -n 1)
+          DMG_PATH=$(find dist/qingxinyuma -name "*.dmg" -type f | head -n 1)
           echo "=== Verification ==="
           xcrun stapler validate "$DMG_PATH" && echo "✅ Notarized" || echo "⚠️ Not notarized"
       
       - name: Archive macOS Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AilyBlockly-macOS-Package
-          path: dist/aily-blockly/
+          name: Qingxinyuma-macOS-Package
+          path: dist/qingxinyuma/
 
   # 任务 3：发布到 GitHub Release
   release:
@@ -229,13 +229,13 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: AilyBlockly-Windows-Package
+          name: Qingxinyuma-Windows-Package
           path: ./release
 
       - name: Download macOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: AilyBlockly-macOS-Package
+          name: Qingxinyuma-macOS-Package
           path: ./release
 
       - name: Create Release
@@ -259,7 +259,7 @@ jobs:
       - name: Download Windows Artifact
         uses: actions/download-artifact@v4
         with:
-          name: AilyBlockly-Windows-Package
+          name: Qingxinyuma-Windows-Package
           path: ./artifacts/windows
 
       - name: Ensure AWS CLI is available
@@ -321,7 +321,7 @@ jobs:
       - name: Download macOS Artifact
         uses: actions/download-artifact@v4
         with:
-          name: AilyBlockly-macOS-Package
+          name: Qingxinyuma-macOS-Package
           path: ./artifacts/macos
 
       - name: Ensure AWS CLI is available
@@ -391,13 +391,13 @@ jobs:
   #     - name: Download Windows Artifact
   #       uses: actions/download-artifact@v4
   #       with:
-  #         name: AilyBlockly-Windows-Package
+  #         name: Qingxinyuma-Windows-Package
   #         path: ./artifacts/windows
   #
   #     - name: Download macOS Artifact
   #       uses: actions/download-artifact@v4
   #       with:
-  #         name: AilyBlockly-macOS-Package
+  #         name: Qingxinyuma-macOS-Package
   #         path: ./artifacts/macos
   #
   #     - name: Upload files to Server (non-yml files first, yml files last)

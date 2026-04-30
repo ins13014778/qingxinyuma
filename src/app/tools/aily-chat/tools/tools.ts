@@ -1150,7 +1150,7 @@ Query board info in boards.json (returns filenames)
 \`\`\`json
 {
   "pattern": "WIFI|BLE",
-  "path": "D:\\\\codes\\\\aily-blockly",
+  "path": "D:\\\\codes\\\\qingxinyuma",
   "include": "*boards.json"
 }
 \`\`\`
@@ -1159,7 +1159,7 @@ Query and return specific content (for detailed info)
 \`\`\`json
 {
   "pattern": "\\\\bWIFI\\\\b|\\\\bBLE\\\\b",
-  "path": "D:\\\\codes\\\\aily-blockly",
+  "path": "D:\\\\codes\\\\qingxinyuma",
   "include": "*boards.json"
   "returnContent": true,
   "contextLines": 1
@@ -1235,7 +1235,7 @@ Query and return specific content (for detailed info)
 \`\`\`json
 {
   "pattern": "**/*.js",
-  "path": "D:\\\\codes\\\\aily-blockly"
+  "path": "D:\\\\codes\\\\qingxinyuma"
 }
 \`\`\`
 
@@ -1251,7 +1251,7 @@ Query and return specific content (for detailed info)
 \`\`\`json
 {
   "pattern": "**/*.{ts,tsx,js,jsx}",
-  "path": "D:\\\\codes\\\\aily-blockly\\\\src"
+  "path": "D:\\\\codes\\\\qingxinyuma\\\\src"
 }
 \`\`\``,
         input_schema: {

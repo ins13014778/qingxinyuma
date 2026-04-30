@@ -9,7 +9,7 @@ import {
   Injector,
   Type
 } from '@angular/core';
-import { AilyBlocklyViewerComponent } from '../components/aily-blockly-viewer/aily-blockly-viewer.component';
+import { QingxinyumaViewerComponent } from '../components/qingxinyuma-viewer/qingxinyuma-viewer.component';
 import { AilyBoardViewerComponent } from '../components/aily-board-viewer/aily-board-viewer.component';
 import { AilyLibraryViewerComponent } from '../components/aily-library-viewer/aily-library-viewer.component';
 import { AilyStateViewerComponent } from '../components/aily-state-viewer/aily-state-viewer.component';
@@ -324,8 +324,8 @@ export class AilyDynamicComponentDirective implements OnInit, OnDestroy {
    */
   private getComponentType(ailyType: string): Type<any> | null {
     switch (ailyType) {
-      case 'aily-blockly':
-        return AilyBlocklyViewerComponent;
+      case 'qingxinyuma':
+        return QingxinyumaViewerComponent;
       case 'aily-board':
         return AilyBoardViewerComponent;
       case 'aily-library':

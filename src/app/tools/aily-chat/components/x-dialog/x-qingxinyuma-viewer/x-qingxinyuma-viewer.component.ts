@@ -2,7 +2,7 @@ import { Component, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
-  selector: 'x-aily-blockly-viewer',
+  selector: 'x-qingxinyuma-viewer',
   standalone: true,
   imports: [CommonModule],
   template: `
@@ -61,7 +61,7 @@ import { CommonModule } from '@angular/common';
     }
   `],
 })
-export class XAilyBlocklyViewerComponent {
+export class XQingxinyumaViewerComponent {
   @Input() data: {
     title?: string;
     blocks?: Array<{ id: string; type: string; pin?: number; time?: number }>;

@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "aily-blockly": {
+    "qingxinyuma": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -24,7 +24,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/aily-blockly",
+            "outputPath": "dist/qingxinyuma",
             "preserveSymlinks": true,
             "index": "src/index.html",
             "browser": "src/main.ts",
@@ -105,10 +105,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "aily-blockly:build:production"
+              "buildTarget": "qingxinyuma:build:production"
             },
             "development": {
-              "buildTarget": "aily-blockly:build:development"
+              "buildTarget": "qingxinyuma:build:development"
             }
           },
           "defaultConfiguration": "development"
