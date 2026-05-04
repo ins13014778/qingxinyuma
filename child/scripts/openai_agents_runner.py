@@ -1,17 +1,18 @@
+"""OpenAI Agents SDK — Simple Runner for qingxinyuma Electron IDE.
+
+Thin wrapper that delegates to the unified turn runner in 'simple' mode.
+Preserves backward compatibility with --prompt-file / --config-file CLI interface
+while gaining Prompt API, ModelSettings, and Responses API support.
+
+For the full-featured runner with tools, handoffs, guardrails, hooks, and streaming,
+use openai_agents_turn_runner.py directly with --mode turn.
+"""
+
 import argparse
+import asyncio
 import json
-import os
 import sys
 from pathlib import Path
-
-from openai import AsyncOpenAI
-from agents import Agent, OpenAIChatCompletionsModel, Runner, set_tracing_disabled
-
-
-SYSTEM_PROMPT = (
-    "You are a pragmatic software engineering assistant. "
-    "Follow the user prompt exactly, respond in plain text, and keep the answer concise."
-)
 
 
 def load_text(path: str) -> str:
@@ -25,74 +26,37 @@ def load_config(path: str) -> dict:
     return json.loads(raw)
 
 
-def normalize_base_url(base_url: str | None) -> str | None:
-    if not base_url:
-        return None
-
-    normalized = base_url.rstrip("/")
-    if normalized.endswith("/chat/completions"):
-        normalized = normalized[: -len("/chat/completions")]
-    return normalized
-
-
-def resolve_model_config(config: dict) -> tuple[str, str | None, str]:
-    api_key = (config.get("apiKey") or "").strip() or (config.get("api_key") or "").strip()
-    base_url = (config.get("baseUrl") or "").strip() or (config.get("base_url") or "").strip()
-    model = (config.get("model") or "").strip()
-
-    if not api_key:
-        api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not base_url:
-        base_url = os.environ.get("OPENAI_BASE_URL", "").strip()
-    if not model:
-        model = os.environ.get("OPENAI_MODEL", "").strip()
-
-    if not api_key:
-        raise RuntimeError("Missing API key. Configure a custom model or set OPENAI_API_KEY.")
-    if not model:
-        raise RuntimeError("Missing model name. Select a custom model or set OPENAI_MODEL.")
-
-    return api_key, normalize_base_url(base_url), model
-
-
-def format_output(value) -> str:
-    if value is None:
-        return ""
-    if isinstance(value, str):
-        return value
-    return json.dumps(value, ensure_ascii=False, indent=2)
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--prompt-file", required=True)
-    parser.add_argument("--config-file", required=True)
+    parser = argparse.ArgumentParser(
+        description="OpenAI Agents simple runner (delegates to unified runner)"
+    )
+    parser.add_argument("--prompt-file", required=True, help="Path to text file with user prompt")
+    parser.add_argument("--config-file", required=True, help="Path to JSON file with model config")
     args = parser.parse_args()
+
+    # Ensure the turn runner's directory is on the import path
+    script_dir = str(Path(__file__).resolve().parent)
+    if script_dir not in sys.path:
+        sys.path.insert(0, script_dir)
+
+    from openai_agents_turn_runner import run_simple
 
     prompt = load_text(args.prompt_file)
     config = load_config(args.config_file)
-    api_key, base_url, model_name = resolve_model_config(config)
 
-    set_tracing_disabled(True)
-
-    client = AsyncOpenAI(api_key=api_key, base_url=base_url or None)
-    model = OpenAIChatCompletionsModel(model=model_name, openai_client=client)
-    agent = Agent(
-        name="AilyOpenAIAgents",
-        instructions=SYSTEM_PROMPT,
-        model=model,
-    )
+    request = {
+        "prompt": prompt,
+        "modelConfig": config,
+    }
 
     try:
-        result = Runner.run_sync(agent, prompt)
+        final_output = asyncio.run(run_simple(request))
+        if final_output:
+            print(final_output)
+        return 0
     except Exception as exc:
         print(str(exc), file=sys.stderr)
         return 1
-
-    output = format_output(result.final_output)
-    if output:
-        print(output)
-    return 0
 
 
 if __name__ == "__main__":

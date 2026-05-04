@@ -11,6 +11,7 @@
 [![Blockly](https://img.shields.io/badge/Blockly-11.x-4285F4.svg)](https://developers.google.com/blockly)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6.svg?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/Node-22.x-339933.svg?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![OpenAI Agents](https://img.shields.io/badge/OpenAI_Agents_SDK-v0.14-412991.svg?logo=openai&logoColor=white)](https://openai.github.io/openai-agents-python/)
 
 [English](./README.md) · **简体中文** · [📖 技术架构](./docs/architecture.md) · [💡 价值主张](./docs/value-proposition.md) · [🌱 五维白皮书](./docs/project-dimensions.md)
 
@@ -42,10 +43,12 @@
 - **一键切换**，代码自动从积木生成
 - 支持学习阶段的**平滑过渡**
 
-### 🤖 AI 原生三层能力
+### 🤖 AI 原生四层能力
 - **L1 代码补全**：本地符号 + 云端 LLM 双通道
 - **L2 对话助手**：aily-chat，支持 Markdown/Mermaid
 - **L3 Agent 模式**：MCP 协议，AI 可直接调用本地工具
+- **L4 多Agent协作**：OpenAI Agents SDK，5 个专家Agent自动分工协作
+- 内置 **62 个工具**覆盖项目管理、文件操作、积木拼图、接线图、终端命令
 - 可切换到任何 OpenAI 兼容接口或私有化模型
 
 ### 🔧 全链路工具链
@@ -156,7 +159,7 @@ npm run build
 
 ## 🤖 AI 能力详解
 
-### 三层 AI 架构
+### 四层 AI 架构
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -173,8 +176,37 @@ npm run build
 │  L3 · MCP Agent（@modelcontextprotocol/sdk）    │
 │     · AI 可调用：读文件 / 编译 / 烧录           │
 │     · 多步自主执行                              │
+├──────────────────────────────────────────────────┤
+│  L4 · OpenAI Agents SDK 多Agent系统             │
+│     · 5个专家Agent自动分工协作                  │
+│     · 62个内置工具覆盖全链路                    │
+│     · 生命周期Hooks + Guardrails安全护栏        │
+│     · Streaming + SQLite会话持久化              │
 └──────────────────────────────────────────────────┘
 ```
+
+### L4 多Agent协作系统（OpenAI Agents SDK v0.14）
+
+基于 OpenAI Agents SDK 构建的**多Agent协作架构**，主Agent根据任务类型自动委派给专家Agent：
+
+| 专家Agent | 职责 | 工具数 |
+| --- | --- | --- |
+| 🏗️ **ProjectSpecialist** | 项目创建、编译、开发板切换、配置管理 | 23 |
+| 📁 **FileSpecialist** | 文件读写、目录管理、搜索、代码编辑 | 13 |
+| 💻 **TerminalSpecialist** | Shell命令、后台进程、终端输出 | 3 |
+| 🧩 **BlocklySpecialist** | 积木搜索、创建、连接、配置、代码结构生成 | 10 |
+| 🔍 **ResearchSpecialist** | 工具发现、技能加载、硬件/库搜索 | 6 |
+| 🔌 **SchematicAgent** | 接线图生成、验证、引脚映射、组件目录 | 9 |
+
+**SDK 特性集成：**
+- ✅ Agent 生命周期 Hooks（agent/tool start/end、handoff 事件）
+- ✅ Structured Output（Pydantic 类型约束专家输出）
+- ✅ Dynamic Instructions（运行时动态系统提示）
+- ✅ Guardrails（输入/输出安全护栏，敏感信息检测）
+- ✅ Hosted Tools（WebSearch、FileSearch、CodeInterpreter）
+- ✅ ModelSettings（per-agent 模型参数调优）
+- ✅ SQLite Session（跨会话记忆持久化）
+- ✅ Streaming（实时流式输出 + 工具调用追踪）
 
 ### AI 配置
 
@@ -204,6 +236,7 @@ npm run build
 | 终端 | xterm.js | 5.5 |
 | ML 框架 | @orama/orama, SSCMA | 3.x |
 | AI SDK | @modelcontextprotocol/sdk | 1.25 |
+| AI Agent SDK | openai-agents (Python) | 0.14 |
 | 串口 | serialport + @lydell/node-pty | — |
 | 国际化 | @ngx-translate/core | 16.x |
 
@@ -362,10 +395,11 @@ export class YourService {
   │                   │                    │
   ├─ 多硬件支持       ├─ AI 代码补全       ├─ 应用/模型商店
   ├─ 多语言 i18n     ├─ MCP Agent         ├─ 云空间协作
-  ├─ 串口监视器      ├─ 端侧 AI 训练      ├─ 插件生态
-  └─ NSIS 打包       └─ SSCMA 集成        └─ Web 版本探索
+  ├─ 串口监视器      ├─ 多Agent协作 ✅     ├─ 插件生态
+  └─ NSIS 打包       ├─ 端侧 AI 训练      └─ Web 版本探索
+                     └─ SSCMA 集成
 
-               ← 当前 v0.9.40
+               ← 当前 v0.9.51
 ```
 
 > 🌱 战略级发展、创新、社会、教育、团队五维度分析 → [`docs/project-dimensions.md`](./docs/project-dimensions.md)
@@ -463,13 +497,16 @@ ci: CI/CD
 - ✅ **ng-zorro-antd 双主题**（深色默认 + 浅色可切换）
 - ✅ **tiktoken 前端计数**（AI 对话成本可见）
 - ✅ **Mermaid / Shiki / Marked**（富文本渲染）
+- ✅ **OpenAI Agents SDK 多Agent协作**（5专家Agent + 62工具 + 生命周期Hooks）
+- ✅ **Guardrails 安全护栏**（输入/输出敏感信息检测）
+- ✅ **SQLite 会话持久化**（跨会话记忆 + 断点续传）
 
 ---
 
 ## 📊 项目状态
 
-- **当前版本**：v0.9.40
-- **活跃阶段**：🤖 智能期（AI 原生 + 端侧 AI 部署）
+- **当前版本**：v0.9.51
+- **活跃阶段**：🤖 智能期（AI 原生 + 多Agent协作 + 端侧 AI 部署）
 - **适用平台**：Windows ✅（主） · macOS ⚠️（测试中） · Linux ⚠️（配置就绪）
 - **开发语言**：TypeScript / JavaScript（渲染 + 主进程）
 - **构建产物**：NSIS Installer / DMG / AppImage
@@ -501,6 +538,7 @@ ci: CI/CD
 - [**esptool-js**](https://github.com/espressif/esptool-js) — ESP32 纯 JS 烧录
 - [**probe-rs**](https://probe.rs/) — Rust 嵌入式调试器
 - [**@modelcontextprotocol/sdk**](https://github.com/modelcontextprotocol) — AI Agent 协议
+- [**OpenAI Agents SDK**](https://openai.github.io/openai-agents-python/) — 多Agent协作框架
 - [**Seeed SSCMA**](https://github.com/Seeed-Studio/SSCMA) — 端侧 AI 工具链
 
 以及所有其他在 `package.json` 中列出的依赖项目的贡献者。

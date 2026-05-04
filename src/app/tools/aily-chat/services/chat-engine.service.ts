@@ -36,7 +36,8 @@ import { ChatMessage, Tool, ToolCallState, ResourceItem } from '../core/chat-typ
 import { AilyHost } from '../core/host';
 import { ToolRegistry } from '../core/tool-registry';
 import { createSecurityContext } from './security.service';
-import { TOOLS } from '../tools/tools';
+import { TOOLS, searchDeferredTools, getDeferredToolsListing } from '../tools/tools';
+import { loadSkillHandler } from '../tools/loadSkillTool';
 import { syncAbsFileHandler } from '../tools/syncAbsFileTool';
 import { registerAskUserCallback, unregisterAskUserCallback, AskUserQuestion, AskUserFullResponse, AskUserAnswer } from '../tools/askUserTool';
 import { cleanupAllTerminalSessions } from '../tools/terminalSessionTool';
@@ -1019,6 +1020,26 @@ Do not create non-existent boards and libraries.
                 content: typeof toolResult?.content === 'string' ? toolResult.content : JSON.stringify(toolResult?.content ?? ''),
                 is_error: !!toolResult?.is_error,
               };
+            }
+
+            // 元工具：search_available_tools — 搜索并激活 deferred 工具
+            if (call.toolName === 'search_available_tools') {
+              const query = call.args?.query || '';
+              const agentConfig = this.ailyChatConfigService.getAgentToolsConfig('mainAgent');
+              const agentExcluded = new Set(agentConfig?.disabledTools || []);
+              const matched = searchDeferredTools(query, this.tools, 'mainAgent', agentExcluded);
+              if (matched.length > 0) {
+                matched.forEach(t => this.activatedDeferredTools.add(t.name));
+                const listing = matched.map(t => `- **${t.name}**: ${(t.description || '').split('\n')[0].slice(0, 80)}`).join('\n');
+                return { content: `已加载 ${matched.length} 个工具，可在后续对话中直接调用：\n${listing}`, is_error: false };
+              }
+              return { content: `未找到匹配 "${query}" 的工具。\n${getDeferredToolsListing('mainAgent', agentExcluded)}`, is_error: false };
+            }
+
+            // 技能加载器：搜索并加载领域技能的详细指南
+            if (call.toolName === 'load_skill') {
+              const toolResult = await loadSkillHandler(call.args || {});
+              return { content: toolResult?.content || '', is_error: !!toolResult?.is_error };
             }
 
             if (!ToolRegistry.has(call.toolName)) {

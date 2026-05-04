@@ -34,6 +34,51 @@ export interface OpenAIAgentsBackendRequest {
     model: string;
   };
   cwd?: string;
+  /** Per-agent / global ModelSettings overrides. */
+  modelSettings?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    toolChoice?: string;
+    parallelToolCalls?: boolean;
+    reasoning?: Record<string, any>;
+  };
+  /** OpenAI Hosted Tools configuration. Only effective with Responses API. */
+  hostedTools?: {
+    webSearch?: {
+      contextSize?: 'low' | 'medium' | 'high';
+      userLocation?: Record<string, any>;
+    };
+    fileSearch?: {
+      vectorStoreIds: string[];
+      maxResults?: number;
+    };
+    codeInterpreter?: {
+      container?: Record<string, any>;
+    };
+    imageGeneration?: {
+      quality?: string;
+      size?: string;
+    };
+    hostedMCP?: Array<{
+      toolConfig: Record<string, any>;
+      approval?: string;
+    }>;
+  };
+  /** OpenAI Prompts API reference. */
+  prompt?: {
+    id: string;
+    version?: string;
+    variables?: Record<string, any>;
+  };
+  /** Project context for dynamic instructions. */
+  projectContext?: {
+    projectName?: string;
+    boardType?: string;
+    recentFiles?: string[];
+  };
 }
 
 export interface OpenAIAgentsToolCall {
@@ -49,6 +94,14 @@ export interface OpenAIAgentsTurnHandlers {
   onTraceInfo?(traceId: string, traceUrl: string): void;
   onApprovalRequest?(call: { callId: string; toolName: string; rawArgs: string; args: any }): Promise<{ approved: boolean; reason?: string }>;
   onRunnerEvent?(event: any): void;
+  /** Lifecycle hook events (agent start/end, LLM start/end, tool start/end, handoff). */
+  onHookEvent?(event: { hook: string; agentName: string; [key: string]: any }): void;
+  /** Final aggregated hook metrics emitted at end of run. */
+  onHookMetrics?(metrics: Record<string, any>): void;
+  /** Info about which hosted tools were activated. */
+  onHostedToolsInfo?(tools: string[]): void;
+  /** Tool-level guardrail warnings (non-blocking). */
+  onToolGuardrailWarning?(event: { toolName: string; reason: string; inputPreview: string }): void;
 }
 
 @Injectable({
@@ -202,6 +255,38 @@ export class OpenAIAgentsBackendService {
           return;
         }
 
+        if (event.type === 'hook_event') {
+          handlers.onHookEvent?.({
+            hook: event.hook || '',
+            agentName: event.agent_name || '',
+            ...event,
+          });
+          handlers.onRunnerEvent?.(event);
+          return;
+        }
+
+        if (event.type === 'hook_metrics') {
+          handlers.onHookMetrics?.(event.metrics || {});
+          handlers.onRunnerEvent?.(event);
+          return;
+        }
+
+        if (event.type === 'hosted_tools_info') {
+          handlers.onHostedToolsInfo?.(event.tools || []);
+          handlers.onRunnerEvent?.(event);
+          return;
+        }
+
+        if (event.type === 'tool_guardrail_warning') {
+          handlers.onToolGuardrailWarning?.({
+            toolName: event.tool_name || '',
+            reason: event.reason || '',
+            inputPreview: event.input_preview || '',
+          });
+          handlers.onRunnerEvent?.(event);
+          return;
+        }
+
         if (
           event.type === 'runner_info' ||
           event.type === 'raw_response_event' ||
@@ -209,7 +294,8 @@ export class OpenAIAgentsBackendService {
           event.type === 'agent_updated_stream_event' ||
           event.type === 'guardrail_tripwire' ||
           event.type === 'tool_budget_skip' ||
-          event.type === 'tool_fast_degrade'
+          event.type === 'tool_fast_degrade' ||
+          event.type === 'max_turns_exceeded'
         ) {
           handlers.onRunnerEvent?.(event);
           return;
