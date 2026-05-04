@@ -1,6 +1,6 @@
 <div align="center">
 
-# 青芯驭码 · aily blockly
+# 青芯驭码
 
 **一套桌面软件，覆盖从"第一次拖积木"到"把 AI 模型部署进硬件"的完整链路**
 
@@ -21,7 +21,7 @@
 
 ## 📖 项目简介
 
-**青芯驭码（aily blockly）** 是一款基于 **Electron + Angular 19** 构建的**桌面级图形化编程 IDE**，面向嵌入式开发、硬件原型验证与 STEM 教学场景。它把 **积木编程（Blockly）、专业代码编辑（Monaco）、AI 助手、串口调试、固件上传、端侧 AI 模型训练与部署** 全部融合在同一款软件中，做到**中文原生、开箱即用、离线可用、可品牌化再分发**。
+**青芯驭码** 是一款基于 **Electron + Angular 19** 构建的**桌面级图形化编程 IDE**，面向嵌入式开发、硬件原型验证与 STEM 教学场景。它把 **积木编程（Blockly）、专业代码编辑（Monaco）、AI 助手、串口调试、固件上传、端侧 AI 模型训练与部署** 全部融合在同一款软件中，做到**中文原生、开箱即用、离线可用、可品牌化再分发**。
 
 > 💡 **我们为谁做这个？**
 > - 🎓 从小学到大学的 **编程/硬件课堂**
@@ -122,7 +122,7 @@ npm run electron
 npm run build
 ```
 
-成功后在 `dist/aily-blockly/` 看到安装包 `青芯驭码-Setup-x.y.z.exe`。
+成功后在 `dist/qingxinyuma/` 看到安装包 `青芯驭码-Setup-x.y.z.exe`。
 
 > 🛠️ 详细打包步骤与常见问题 → [`docs/windows-build-deploy.md`](./docs/windows-build-deploy.md)
 
@@ -266,7 +266,7 @@ npm run build
 ## 📁 项目结构
 
 ```
-aily-blockly-main/
+qingxinyuma/
 ├── src/                        # Angular 渲染进程
 │   ├── app/
 │   │   ├── main-window/        # 主窗口壳
