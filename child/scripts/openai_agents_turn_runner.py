@@ -135,13 +135,26 @@ else:
 # ---------------------------------------------------------------------------
 
 MAIN_AGENT_INSTRUCTIONS = (
-    "You are the orchestration agent inside an Electron coding application. "
-    "Prefer delegating work to the most appropriate specialist agent instead of doing all work yourself. "
-    "Use direct tools only for lightweight coordination tasks like asking the user for clarification. "
-    "Delegate only when it materially improves the answer, keep specialist usage focused, and stop exploring once you have enough evidence. "
-    "Avoid repeated filesystem discovery or repeated diagnostics unless the user explicitly asks for deeper investigation. "
-    "If you create a todo list or test plan, continue executing it in the same run instead of stopping after planning, unless the user explicitly asks for plan-only output. "
-    "Keep answers concise and combine specialist outputs into one coherent response."
+    "You are the orchestration agent inside an Electron coding application for embedded hardware (Arduino/ESP32/STM32).\n\n"
+    "IMPORTANT: You must DELEGATE to specialist agents for most tasks. You do NOT have file editing, code editing, "
+    "terminal, or blockly tools yourself. You only have coordination tools (ask_user, search_available_tools, load_skill, etc.).\n\n"
+    "Available specialist agents — use the corresponding transfer tool to delegate:\n"
+    "- FileSpecialist: For reading, creating, editing, replacing, deleting files and folders. "
+    "  Use when the user asks to modify code, read files, search text, or manage directories.\n"
+    "- ProjectSpecialist: For project creation, building, board switching, configuration, and diagnostics.\n"
+    "- TerminalSpecialist: For running shell commands and getting terminal output.\n"
+    "- BlocklySpecialist: For Blockly block search, creation, connection, configuration, and code structure generation.\n"
+    "- ResearchSpecialist: For searching hardware libraries, fetching URLs, and discovering tools.\n"
+    "- schematicAgent: For wiring diagrams, pin maps, and hardware integration.\n\n"
+    "Workflow:\n"
+    "1. Analyze the user's request and identify which specialist(s) are needed.\n"
+    "2. Transfer to the appropriate specialist agent(s) in sequence or parallel.\n"
+    "3. Combine specialist outputs into one coherent response.\n"
+    "4. If a task requires multiple steps (e.g., create project then edit file then build), "
+    "   transfer to each specialist in order.\n\n"
+    "Avoid repeated filesystem discovery or repeated diagnostics unless the user explicitly asks. "
+    "If you create a todo list, continue executing it instead of stopping after planning. "
+    "Keep answers concise."
 )
 
 SCHEMATIC_AGENT_INSTRUCTIONS = (
@@ -153,6 +166,7 @@ SPECIALIST_AGENT_DEFS = [
     {
         "key": "project",
         "name": "ProjectSpecialist",
+        "description": "Handles project creation, build, board switching, configuration, and diagnostics. Delegate here for: create_project, build_project, switch_board, get/set_board_config, get_errors, clone_repository.",
         "instructions": (
             "You specialize in project creation, board switching, project configuration, build execution, "
             "repository cloning, architecture notes, and project-level diagnostics. "
@@ -171,6 +185,7 @@ SPECIALIST_AGENT_DEFS = [
     {
         "key": "file",
         "name": "FileSpecialist",
+        "description": "Handles all file operations: read, create, edit, replace, delete files/folders, search text (grep), glob patterns. Delegate here for ANY file content modification or reading.",
         "instructions": (
             "You specialize in reading, creating, editing, replacing, and organizing files and folders. "
             "Use file and search tools to inspect and modify project content precisely. "
@@ -188,6 +203,7 @@ SPECIALIST_AGENT_DEFS = [
     {
         "key": "terminal",
         "name": "TerminalSpecialist",
+        "description": "Handles shell command execution, background processes, and terminal output. Delegate here for: execute_command, start_background_command, get_terminal_output.",
         "instructions": (
             "You specialize in shell commands, background processes, terminal output, and environment inspection. "
             "Use terminal tools carefully and summarize command results clearly. "
@@ -202,6 +218,7 @@ SPECIALIST_AGENT_DEFS = [
     {
         "key": "blockly",
         "name": "BlocklySpecialist",
+        "description": "Handles Blockly visual programming: search blocks, create blocks, connect blocks, configure blocks, generate code structures, analyze libraries. Delegate here for ALL blockly/block operations.",
         "instructions": (
             "You specialize in Blockly, block search, ABS syntax, library block analysis, "
             "block creation, structure generation, and code generation diagnostics. "
@@ -219,6 +236,7 @@ SPECIALIST_AGENT_DEFS = [
     {
         "key": "research",
         "name": "ResearchSpecialist",
+        "description": "Handles research tasks: search hardware libraries, fetch URLs, discover tools, load skills. Delegate here for: search_boards_libraries, fetch, web_search, search_available_tools.",
         "instructions": (
             "You specialize in searching available tools, loading skills, fetching remote content, "
             "and hardware or library discovery. Prefer research-oriented tools first and avoid using "
@@ -931,7 +949,7 @@ def classify_specialist_tools(main_tools: list[dict[str, Any]]) -> tuple[list[di
             "instructions": specialist["instructions"],
             "output_type": specialist.get("output_type"),
             "tools": tools,
-            "description": specialist["instructions"],
+            "description": specialist.get("description") or specialist["instructions"],
             "max_tool_calls": max_tc,
         })
 
