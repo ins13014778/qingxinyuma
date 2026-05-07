@@ -1,7 +1,7 @@
-import { Component, OnDestroy, OnInit, AfterViewInit, ElementRef, ChangeDetectorRef, viewChild, viewChildren, effect, signal, untracked } from '@angular/core';
+import { Component, OnDestroy, OnInit, AfterViewInit, ElementRef, ChangeDetectorRef, viewChild, viewChildren, effect, signal, untracked, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { injectVirtualizer } from '@tanstack/angular-virtual';
-import { LogService, LogOptions } from '../../services/log.service';
+import { LogService, LogOptions, LogCategory } from '../../services/log.service';
 import { AnsiPipe } from './ansi.pipe';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { UiService } from '../../services/ui.service';
@@ -30,6 +30,10 @@ export class LogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // 日志列表
   logList: LogOptions[] = [];
+
+  // AI 日志筛选
+  showAiOnly = false;
+  expandedMetadata = new Set<number>();
 
   // 日志数量 signal，用于驱动 virtualizer 响应式更新
   logCount = signal(0);
@@ -65,7 +69,7 @@ export class LogComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit() {
     // 初始化日志列表
     this.logList = [...this.logService.list];
-    this.logCount.set(this.logList.length);
+    this.logCount.set(this.filteredLogList.length);
   }
 
   ngAfterViewInit() {
@@ -96,10 +100,82 @@ export class LogComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private scrollTimeoutId: any;
 
+  // 获取过滤后的日志列表
+  get filteredLogList(): LogOptions[] {
+    if (!this.showAiOnly) return this.logList;
+    const aiCategories: LogCategory[] = ['request', 'response', 'tool_call', 'tool_result', 'error', 'handoff', 'guardrail', 'hook'];
+    return this.logList.filter(item => item.category && aiCategories.includes(item.category));
+  }
+
+  // 切换 AI 日志筛选
+  toggleAiFilter() {
+    this.showAiOnly = !this.showAiOnly;
+    const list = this.filteredLogList;
+    this.logCount.set(list.length);
+    this.cdr.detectChanges();
+    this.scrollToBottom();
+  }
+
+  // 切换 metadata 展开/折叠
+  toggleMetadata(index: number) {
+    if (this.expandedMetadata.has(index)) {
+      this.expandedMetadata.delete(index);
+    } else {
+      this.expandedMetadata.add(index);
+    }
+  }
+
+  isMetadataExpanded(index: number): boolean {
+    return this.expandedMetadata.has(index);
+  }
+
+  // 获取分类颜色
+  getCategoryColor(category?: string): string {
+    const colors: Record<string, string> = {
+      request: '#1890ff',
+      response: '#52c41a',
+      tool_call: '#fa8c16',
+      tool_result: '#d48806',
+      error: '#ff4d4f',
+      handoff: '#722ed1',
+      guardrail: '#eb2f96',
+      hook: '#13c2c2',
+      general: '#8c8c8c',
+    };
+    return colors[category || ''] || 'transparent';
+  }
+
+  // 获取分类图标
+  getCategoryIcon(category?: string): string {
+    const icons: Record<string, string> = {
+      request: '📤',
+      response: '📥',
+      tool_call: '🔧',
+      tool_result: '📋',
+      error: '❌',
+      handoff: '🔀',
+      guardrail: '🛡️',
+      hook: '🪝',
+      general: '📝',
+    };
+    return icons[category || ''] || '';
+  }
+
+  // 格式化 metadata 为 JSON
+  formatMetadata(metadata?: Record<string, any>): string {
+    if (!metadata) return '';
+    try {
+      return JSON.stringify(metadata, null, 2);
+    } catch {
+      return String(metadata);
+    }
+  }
+
   // 处理日志更新
   private handleLogUpdate() {
     this.logList = [...this.logService.list];
-    this.logCount.set(this.logList.length);
+    const list = this.filteredLogList;
+    this.logCount.set(list.length);
     this.cdr.detectChanges();
     // 滚动到底部
     this.scrollToBottom();
@@ -108,6 +184,7 @@ export class LogComponent implements OnInit, AfterViewInit, OnDestroy {
   clear() {
     this.logService.clear();
     this.logList = [];
+    this.expandedMetadata.clear();
     this.logCount.set(0);
     this.cdr.detectChanges();
   }

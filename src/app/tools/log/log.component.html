@@ -1,20 +1,59 @@
+<div class="log-toolbar">
+  <button
+    class="filter-btn"
+    [class.active]="showAiOnly"
+    (click)="toggleAiFilter()"
+    title="AI 日志筛选"
+  >
+    <span class="filter-icon">{{ showAiOnly ? '🤖' : '📋' }}</span>
+    <span>{{ showAiOnly ? 'AI 日志' : '全部日志' }}</span>
+  </button>
+  <span class="log-count">{{ filteredLogList.length }} / {{ logList.length }}</span>
+</div>
+
 <div #scrollElement class="log-box">
   <div class="log-inner" [style.height.px]="virtualizer.getTotalSize()">
     @for (row of virtualizer.getVirtualItems(); track row.index) {
-      @if (logList[row.index]) {
+      @if (filteredLogList[row.index]) {
         <div
           #virtualRow
           [attr.data-index]="row.index"
           class="item"
-          [ngClass]="{'error': logList[row.index].state === 'error', 'warn': logList[row.index].state === 'warn', 'info': logList[row.index].state === 'info'}"
-          (click)="handleClick(logList[row.index], $event)"
-          (dblclick)="handleDoubleClick(logList[row.index], $event)"
+          [ngClass]="{
+            'error': filteredLogList[row.index].state === 'error',
+            'warn': filteredLogList[row.index].state === 'warn',
+            'info': filteredLogList[row.index].state === 'info'
+          }"
+          [style.border-left-color]="filteredLogList[row.index].category ? getCategoryColor(filteredLogList[row.index].category) : null"
+          (click)="handleClick(filteredLogList[row.index], $event)"
+          (dblclick)="handleDoubleClick(filteredLogList[row.index], $event)"
           [title]="'LOG.TOOLTIP' | translate"
           [style.transform]="'translateY(' + row.start + 'px)'"
         >
-          <div class="date">{{ logList[row.index].timestamp | date:'HH:mm:ss' }}</div>
-          <div class="title">{{ logList[row.index].title }}</div>
-          <div class="text" [innerHTML]="logList[row.index].detail | ansi"></div>
+          <div class="date">{{ filteredLogList[row.index].timestamp | date:'HH:mm:ss' }}</div>
+          @if (filteredLogList[row.index].category) {
+            <span
+              class="category-badge"
+              [style.background-color]="getCategoryColor(filteredLogList[row.index].category)"
+            >
+              {{ getCategoryIcon(filteredLogList[row.index].category) }} {{ filteredLogList[row.index].category }}
+            </span>
+          }
+          <div class="title">{{ filteredLogList[row.index].title }}</div>
+          <div class="text" [innerHTML]="filteredLogList[row.index].detail | ansi"></div>
+          @if (filteredLogList[row.index].metadata) {
+            <div class="metadata-wrapper">
+              <button
+                class="metadata-toggle"
+                (click)="toggleMetadata(row.index); $event.stopPropagation()"
+              >
+                {{ isMetadataExpanded(row.index) ? '▼' : '▶' }} metadata
+              </button>
+              @if (isMetadataExpanded(row.index)) {
+                <pre class="metadata-content">{{ formatMetadata(filteredLogList[row.index].metadata) }}</pre>
+              }
+            </div>
+          }
         </div>
       }
     }

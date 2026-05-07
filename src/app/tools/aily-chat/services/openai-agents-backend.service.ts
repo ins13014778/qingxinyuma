@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AgentCliService } from '../../../services/agent-cli.service';
+import { LogService } from '../../../services/log.service';
 
 export interface OpenAIAgentsBackendRequest {
   userInput: string;
@@ -199,6 +200,13 @@ export class OpenAIAgentsBackendService {
         }
 
         if (event.type === 'tool_call_request') {
+          this.logService.aiLog({
+            level: 'info',
+            category: 'tool_call',
+            title: `工具调用请求: ${event.tool_name || 'unknown'}`,
+            detail: (event.tool_args || '').slice(0, 500),
+            metadata: { toolId: event.tool_id, toolName: event.tool_name },
+          });
           let parsedArgs: any = {};
           try {
             parsedArgs = event.tool_args ? JSON.parse(event.tool_args) : {};
@@ -210,6 +218,13 @@ export class OpenAIAgentsBackendService {
             toolName: event.tool_name,
             rawArgs: event.tool_args || '{}',
             args: parsedArgs,
+          });
+          this.logService.aiLog({
+            level: result.is_error ? 'error' : 'info',
+            category: 'tool_result',
+            title: `工具结果: ${event.tool_name || 'unknown'}${result.is_error ? ' [失败]' : ''}`,
+            detail: (result.content || '').slice(0, 500),
+            metadata: { toolId: event.tool_id, toolName: event.tool_name, isError: result.is_error },
           });
           await window['cmd'].input(
             streamId,
@@ -230,6 +245,13 @@ export class OpenAIAgentsBackendService {
         }
 
         if (event.type === 'approval_request') {
+          this.logService.aiLog({
+            level: 'info',
+            category: 'tool_call',
+            title: `审批请求: ${event.tool_name || 'unknown'}`,
+            detail: (event.tool_args || '').slice(0, 500),
+            metadata: { callId: event.call_id, toolName: event.tool_name },
+          });
           handlers.onRunnerEvent?.(event);
           let parsedArgs: any = {};
           try {
@@ -256,6 +278,13 @@ export class OpenAIAgentsBackendService {
         }
 
         if (event.type === 'hook_event') {
+          this.logService.aiLog({
+            level: 'info',
+            category: 'hook',
+            title: `${event.hook || 'unknown'} → ${event.agent_name || ''}`,
+            detail: JSON.stringify(event).slice(0, 500),
+            metadata: { hook: event.hook, agentName: event.agent_name },
+          });
           handlers.onHookEvent?.({
             hook: event.hook || '',
             agentName: event.agent_name || '',
@@ -278,6 +307,13 @@ export class OpenAIAgentsBackendService {
         }
 
         if (event.type === 'tool_guardrail_warning') {
+          this.logService.aiLog({
+            level: 'warn',
+            category: 'guardrail',
+            title: `安全护栏警告: ${event.tool_name || 'unknown'}`,
+            detail: event.reason || '',
+            metadata: { toolName: event.tool_name, reason: event.reason, inputPreview: event.input_preview },
+          });
           handlers.onToolGuardrailWarning?.({
             toolName: event.tool_name || '',
             reason: event.reason || '',
@@ -302,12 +338,26 @@ export class OpenAIAgentsBackendService {
         }
 
         if (event.type === 'TaskCompleted') {
+          this.logService.aiLog({
+            level: 'info',
+            category: 'response',
+            title: `Runner 完成 stop_reason=${event.stop_reason || ''}`,
+            detail: finalOutput.slice(0, 500),
+            metadata: { streamId, stopReason: event.stop_reason, outputLen: finalOutput.length },
+          });
           this.writeDebugLog(streamId, [`taskCompleted stop_reason=${event.stop_reason || ''}`]);
           finish();
           return;
         }
 
         if (event.type === 'error') {
+          this.logService.aiLog({
+            level: 'error',
+            category: 'error',
+            title: `Runner 错误: ${event.message || 'unknown'}`,
+            detail: JSON.stringify(event).slice(0, 1000),
+            metadata: { streamId, message: event.message },
+          });
           this.writeDebugLog(streamId, [`runnerError=${event.message || ''}`]);
           finish(new Error(event.message || 'OpenAI Agents Python 执行失败'));
         }
@@ -432,5 +482,6 @@ export class OpenAIAgentsBackendService {
 
   constructor(
     private agentCliService: AgentCliService,
+    private logService: LogService,
   ) {}
 }

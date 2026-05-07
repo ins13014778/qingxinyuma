@@ -28,6 +28,7 @@ import { EditCheckpointService } from './edit-checkpoint.service';
 import { ScrollManagerService } from './scroll-manager.service';
 import { ResourceManagerService } from './resource-manager.service';
 import { MenuManagerService } from './menu-manager.service';
+import { LogService } from '../../../services/log.service';
 import { TodoUpdateService } from './todoUpdate.service';
 import { AgentCliBackend, AgentCliProvider, AgentCliService } from '../../../services/agent-cli.service';
 import { ConfigService } from '../../../services/config.service';
@@ -226,6 +227,7 @@ export class ChatEngineService {
     private openAIAgentsBackendService: OpenAIAgentsBackendService,
     private openAIAgentsRunStateService: OpenAIAgentsRunStateService,
     private openAIAgentsTraceService: OpenAIAgentsTraceService,
+    private logService: LogService,
   ) {
     // 初始化 viewAdapter（需要 ngZone 已注入）
     (this as any).viewAdapter = new ChatViewAdapter(
@@ -837,6 +839,7 @@ Do not create non-existent boards and libraries.
 
   private async sendToOpenAIAgents(prompt: string): Promise<void> {
     try { window['log']?.info?.(`[OpenAIAgents] sendToOpenAIAgents start session=${this.sessionId || ''} prompt=${(prompt || '').slice(0, 120)}`); } catch {}
+    this.logService.aiLog({ level: 'info', category: 'request', title: `用户请求 session=${this.sessionId || ''}`, detail: (prompt || '').slice(0, 500), metadata: { sessionId: this.sessionId, promptLen: (prompt || '').length } });
     this._currentOpenAIAgentsTraceId = null;
     const status = await this.agentCliService.detectProvider('openai-agents-python');
     try { window['log']?.info?.(`[OpenAIAgents] provider detected installed=${status.installed} version=${status.version || ''} path=${status.commandPath || ''} error=${status.error || ''}`); } catch {}
@@ -995,31 +998,40 @@ Do not create non-existent boards and libraries.
               tool_args: call.rawArgs,
             });
 
+            // ── AI 日志：工具调用开始 ──
+            const _argsPreview = (call.rawArgs || '').slice(0, 300);
+            this.logService.aiLog({ level: 'info', category: 'tool_call', title: call.toolName, detail: _argsPreview, metadata: { toolId: call.toolId, args: call.args } });
+
+            let toolResult: any;
+
             if (call.toolName === 'run_subagent') {
-              const toolResult = await this.subagentSessionService.executeSubagentToolCall({
+              const _content = await this.subagentSessionService.executeSubagentToolCall({
                 tool_id: call.toolId,
                 tool_name: call.toolName,
                 tool_args: call.rawArgs,
                 tool_type: 'subagent',
                 agent_name: call.args?.agent || 'unknown',
               });
-              return {
-                content: toolResult,
-                is_error: false,
-              };
+              toolResult = { content: _content, is_error: false };
+              // ── AI 日志：subagent 委派 ──
+              this.logService.aiLog({ level: 'info', category: 'handoff', title: `委派 → ${call.args?.agent || 'unknown'}`, detail: (_content || '').slice(0, 300) });
+              return toolResult;
             }
 
             if (call.toolName.startsWith('mcp_')) {
               this.msg.startToolCall(call.toolId, call.toolName, `执行工具: ${call.toolName}`, call.args);
               const mcpName = call.toolName.substring(4);
-              const toolResult = await this.mcpService.use_tool(mcpName, call.args);
-              const resultState = toolResult?.is_error ? ToolCallState.ERROR : ToolCallState.DONE;
-              const resultText = toolResult?.is_error ? `${call.toolName} 执行失败` : `${call.toolName} 执行成功`;
+              const mcpResult = await this.mcpService.use_tool(mcpName, call.args);
+              const resultState = mcpResult?.is_error ? ToolCallState.ERROR : ToolCallState.DONE;
+              const resultText = mcpResult?.is_error ? `${call.toolName} 执行失败` : `${call.toolName} 执行成功`;
               this.msg.completeToolCall(call.toolId, call.toolName, resultState, resultText, 'mainAgent');
-              return {
-                content: typeof toolResult?.content === 'string' ? toolResult.content : JSON.stringify(toolResult?.content ?? ''),
-                is_error: !!toolResult?.is_error,
+              toolResult = {
+                content: typeof mcpResult?.content === 'string' ? mcpResult.content : JSON.stringify(mcpResult?.content ?? ''),
+                is_error: !!mcpResult?.is_error,
               };
+              // ── AI 日志：MCP 工具结果 ──
+              this.logService.aiLog({ level: mcpResult?.is_error ? 'error' : 'info', category: 'tool_result', title: `${call.toolName} → ${mcpResult?.is_error ? '失败' : '成功'}`, detail: (toolResult.content || '').slice(0, 300), metadata: { toolId: call.toolId, isError: !!mcpResult?.is_error } });
+              return toolResult;
             }
 
             // 元工具：search_available_tools — 搜索并激活 deferred 工具
@@ -1031,31 +1043,46 @@ Do not create non-existent boards and libraries.
               if (matched.length > 0) {
                 matched.forEach(t => this.activatedDeferredTools.add(t.name));
                 const listing = matched.map(t => `- **${t.name}**: ${(t.description || '').split('\n')[0].slice(0, 80)}`).join('\n');
-                return { content: `已加载 ${matched.length} 个工具，可在后续对话中直接调用：\n${listing}`, is_error: false };
+                toolResult = { content: `已加载 ${matched.length} 个工具，可在后续对话中直接调用：\n${listing}`, is_error: false };
+              } else {
+                toolResult = { content: `未找到匹配 "${query}" 的工具。\n${getDeferredToolsListing('mainAgent', agentExcluded)}`, is_error: false };
               }
-              return { content: `未找到匹配 "${query}" 的工具。\n${getDeferredToolsListing('mainAgent', agentExcluded)}`, is_error: false };
+              this.logService.aiLog({ level: 'info', category: 'tool_result', title: `search_available_tools → ${matched?.length || 0}个`, detail: query });
+              return toolResult;
             }
 
             // 技能加载器：搜索并加载领域技能的详细指南
             if (call.toolName === 'load_skill') {
-              const toolResult = await loadSkillHandler(call.args || {});
-              return { content: toolResult?.content || '', is_error: !!toolResult?.is_error };
+              const skillResult = await loadSkillHandler(call.args || {});
+              toolResult = { content: skillResult?.content || '', is_error: !!skillResult?.is_error };
+              this.logService.aiLog({ level: skillResult?.is_error ? 'error' : 'info', category: 'tool_result', title: `load_skill → ${skillResult?.is_error ? '失败' : '成功'}`, detail: (skillResult?.content || '').slice(0, 200) });
+              return toolResult;
             }
 
             if (!ToolRegistry.has(call.toolName)) {
+              this.logService.aiLog({ level: 'error', category: 'error', title: `未知工具: ${call.toolName}`, metadata: { toolId: call.toolId } });
               return {
                 content: `未知工具: ${call.toolName}`,
                 is_error: true,
               };
             }
 
-            const result = await this.executeRegisteredTool(call.toolId, call.toolName, call.args, { skipApproval: true });
-            return {
-              content: typeof result.toolResult?.content === 'string'
-                ? result.toolResult.content
-                : JSON.stringify(result.toolResult?.content ?? ''),
-              is_error: !!result.toolResult?.is_error,
+            const regResult = await this.executeRegisteredTool(call.toolId, call.toolName, call.args, { skipApproval: true });
+            toolResult = {
+              content: typeof regResult.toolResult?.content === 'string'
+                ? regResult.toolResult.content
+                : JSON.stringify(regResult.toolResult?.content ?? ''),
+              is_error: !!regResult.toolResult?.is_error,
             };
+            // ── AI 日志：注册工具结果 ──
+            this.logService.aiLog({
+              level: regResult.toolResult?.is_error ? 'error' : 'info',
+              category: 'tool_result',
+              title: `${call.toolName} → ${regResult.toolResult?.is_error ? '失败' : '成功'}`,
+              detail: (toolResult.content || '').slice(0, 300),
+              metadata: { toolId: call.toolId, isError: !!regResult.toolResult?.is_error },
+            });
+            return toolResult;
           },
         }
       );

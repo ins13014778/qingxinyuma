@@ -1,16 +1,58 @@
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
-  position: relative;
+}
+
+.log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  background-color: var(--aily-bg-secondary);
+  border-bottom: 1px solid var(--aily-border-color);
+  flex-shrink: 0;
+
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border: 1px solid var(--aily-border-color);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--aily-text-secondary);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--aily-text-tertiary);
+      color: var(--aily-text-primary);
+    }
+
+    &.active {
+      background: rgba(24, 144, 255, 0.15);
+      border-color: #1890ff;
+      color: #1890ff;
+    }
+
+    .filter-icon {
+      font-size: 14px;
+    }
+  }
+
+  .log-count {
+    font-size: 11px;
+    color: var(--aily-text-tertiary);
+    margin-left: auto;
+  }
 }
 
 .log-box {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  flex: 1;
+  min-height: 0;
   overflow-x: hidden;
   background-color: var(--aily-bg-elevated);
   color: var(--aily-text-primary);
@@ -66,6 +108,51 @@
     .title {
       margin-right: 10px;
       flex-shrink: 0;
+    }
+
+    .category-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      padding: 0 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      color: #fff;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-right: 8px;
+      line-height: 18px;
+    }
+
+    .metadata-wrapper {
+      width: 100%;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .metadata-toggle {
+      background: transparent;
+      border: none;
+      color: var(--aily-text-tertiary);
+      cursor: pointer;
+      font-size: 11px;
+      padding: 0;
+      &:hover {
+        color: var(--aily-text-primary);
+      }
+    }
+
+    .metadata-content {
+      margin: 2px 0 4px;
+      padding: 6px 8px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
+      font-size: 11px;
+      color: var(--aily-text-secondary);
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
     }
 
     .icon {

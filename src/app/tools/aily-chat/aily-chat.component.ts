@@ -463,6 +463,7 @@ export class AilyChatComponent implements OnDestroy {
   openHistoryChat() {
     this.engine.refreshHistoryList();
     this.menuManager.openHistoryChat();
+    this.cdr.markForCheck();
   }
 
   historyActionClick(e: { action: string; data: any }) {

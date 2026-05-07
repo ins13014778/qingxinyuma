@@ -2,6 +2,10 @@ const path = require('path');
 const electronLog = require('electron-log');
 const fs = require('fs');
 
+// AI 专用日志实例（独立文件 ai.log）
+const aiLog = electronLog.create('ai-log');
+let aiLogInitialised = false;
+
 // 初始化日志系统
 function initLogger(appDataPath) {
     // 配置日志文件路径
@@ -11,32 +15,45 @@ function initLogger(appDataPath) {
         fs.mkdirSync(logDir, { recursive: true });
     }
     electronLog.transports.file.resolvePathFn = () => path.join(logDir, 'app.log');
-    
+
     // 配置日志格式
     electronLog.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}';
-    
+
     // 配置日志文件大小限制 (1MB)
     electronLog.transports.file.maxSize = 1024 * 1024;
-    
+
     // 配置日志级别
     electronLog.transports.file.level = 'info';
     electronLog.transports.console.level = 'info';
-    
+
+    // 初始化 AI 专用日志文件
+    try {
+        aiLog.transports.file.resolvePathFn = () => path.join(logDir, 'ai.log');
+        aiLog.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] {text}';
+        aiLog.transports.file.maxSize = 2 * 1024 * 1024; // 2MB
+        aiLog.transports.file.level = 'info';
+        aiLog.transports.console.level = false; // 不重复输出到控制台
+        aiLogInitialised = true;
+        aiLog.info('AI 日志文件已初始化');
+    } catch (err) {
+        electronLog.warn('AI 日志文件初始化失败:', err);
+    }
+
     // 将原生console重定向到electron-log
     console.log = electronLog.info.bind(electronLog);
     console.error = electronLog.error.bind(electronLog);
     console.warn = electronLog.warn.bind(electronLog);
     console.info = electronLog.info.bind(electronLog);
-    
+
     // 捕获未处理的异常和承诺拒绝
     process.on('uncaughtException', (err) => {
         electronLog.error('Uncaught Exception:', err);
     });
-    
+
     process.on('unhandledRejection', (reason, promise) => {
         electronLog.error('Unhandled Rejection at:', promise, 'reason:', reason);
     });
-    
+
     electronLog.info('日志系统已初始化，日志文件路径:', electronLog.transports.file.getFile().path);
     return electronLog.transports.file.getFile().path;
 }
@@ -44,21 +61,24 @@ function initLogger(appDataPath) {
 // 注册 IPC handler，允许渲染进程发送日志到主进程
 function registerLoggerHandlers() {
     const { ipcMain } = require('electron');
-    
+
     // 处理来自渲染进程的日志
     ipcMain.handle('log-error', (event, message, error) => {
-        const errorMessage = error 
+        const errorMessage = error
             ? `${message}: ${error.message || error}${error.stack ? '\n' + error.stack : ''}`
             : message;
         electronLog.error('[渲染进程]', errorMessage);
+        if (aiLogInitialised) aiLog.error(errorMessage);
     });
-    
+
     ipcMain.handle('log-warn', (event, message) => {
         electronLog.warn('[渲染进程]', message);
+        if (aiLogInitialised) aiLog.warn(message);
     });
-    
+
     ipcMain.handle('log-info', (event, message) => {
         electronLog.info('[渲染进程]', message);
+        if (aiLogInitialised) aiLog.info(message);
     });
 }
 
